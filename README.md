@@ -1,7 +1,5 @@
 # Collaborator
 
-> **Note:** This repo is for releases only — it hosts downloadable builds and the install script. The source code is not publicly available (yet). For bug reports and feature requests, please use the [Issues](https://github.com/collaborator-ai/collab-public/issues) tab.
-
 Collaborator is a place to build with agents.
 
 ![Collaborator](screenshot.png)
