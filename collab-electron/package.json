@@ -9,7 +9,7 @@
 	],
 	"main": "out/main/index.js",
 	"scripts": {
-		"dev": "electron-vite dev",
+		"dev": "unset ELECTRON_EXEC_PATH && electron-vite dev",
 		"build": "electron-vite build",
 		"preview": "electron-vite preview",
 		"package": "./scripts/package.sh",
