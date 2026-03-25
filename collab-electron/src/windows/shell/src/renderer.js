@@ -26,14 +26,13 @@ canvasEl.tabIndex = -1;
 initDarkMode(() => viewport.updateCanvas());
 
 let broadcastCanvasOpacity = () => {};
-let lastCanvasOpacity = null;
+const DEFAULT_CANVAS_OPACITY = 50;
+let lastCanvasOpacity = DEFAULT_CANVAS_OPACITY;
 
 window.shellApi.getPref("canvasOpacity").then((v) => {
-	if (v != null) {
-		lastCanvasOpacity = v;
-		applyCanvasOpacity(v);
-		broadcastCanvasOpacity();
-	}
+	lastCanvasOpacity = v != null ? v : DEFAULT_CANVAS_OPACITY;
+	applyCanvasOpacity(lastCanvasOpacity);
+	broadcastCanvasOpacity();
 });
 
 window.shellApi.onPrefChanged((key, value) => {
