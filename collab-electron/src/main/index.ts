@@ -44,6 +44,7 @@ import {
 } from "./analytics";
 import { stopImageWorker } from "./image-service";
 import { installCli } from "./cli-installer";
+import { cleanupTempFiles, startPeriodicBackup, stopPeriodicBackup } from "./canvas-persistence";
 
 // macOS apps launched from Finder don't inherit the user's shell
 // LANG, so child processes (tmux, shells) default to ASCII.
@@ -633,6 +634,7 @@ function sendLoadingDone(): void {
 async function shutdownBackgroundServices(): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
+  stopPeriodicBackup();
   pty.setShuttingDown(true);
   await pty.killAllAndWait();
   watcher.stopWorker();
@@ -735,6 +737,8 @@ app.whenReady().then(async () => {
 
   config = loadConfig();
   installCli();
+  await cleanupTempFiles();
+  startPeriodicBackup();
   watcher.startWorker();
   registerIpcHandlers(config);
   registerIntegrationsIpc();

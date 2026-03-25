@@ -1219,6 +1219,7 @@ async function init() {
 
 	// -- Restore canvas state --
 
+	let stateLoadedSuccessfully = false;
 	const savedState = await window.shellApi.canvasLoadState();
 	if (savedState) {
 		viewportState.panX = savedState.viewport.panX;
@@ -1226,17 +1227,43 @@ async function init() {
 		viewportState.zoom = savedState.viewport.zoom;
 		viewport.updateCanvas();
 		tileManager.restoreCanvasState(savedState.tiles);
-	}
-
-	// Kill tmux sessions that have no corresponding terminal tile
-	const activeSessionIds = [];
-	for (const [id] of tileManager.getTileDOMs()) {
-		const tile = getTile(id);
-		if (tile?.type === "term" && tile.ptySessionId) {
-			activeSessionIds.push(tile.ptySessionId);
+		stateLoadedSuccessfully = true;
+	} else {
+		const discovered = await window.shellApi.ptyDiscover?.() ?? [];
+		if (discovered.length > 0) {
+			console.warn(
+				`[renderer] State lost but found ${discovered.length} living tmux session(s), recovering...`,
+			);
+			const GRID_COLS = 3;
+			const SPACING_X = 420;
+			const SPACING_Y = 520;
+			for (let i = 0; i < discovered.length; i++) {
+				const col = i % GRID_COLS;
+				const row = Math.floor(i / GRID_COLS);
+				const cx = col * SPACING_X;
+				const cy = row * SPACING_Y;
+				const session = discovered[i];
+				const tile = tileManager.createCanvasTile(
+					"term", cx, cy,
+					{ ptySessionId: session.sessionId, cwd: session.meta?.cwd },
+				);
+				tileManager.spawnTerminalWebview(tile, false);
+			}
+			tileManager.saveCanvasImmediate();
+			stateLoadedSuccessfully = true;
 		}
 	}
-	window.shellApi.ptyCleanDetached?.(activeSessionIds);
+
+	if (stateLoadedSuccessfully) {
+		const activeSessionIds = [];
+		for (const [id] of tileManager.getTileDOMs()) {
+			const tile = getTile(id);
+			if (tile?.type === "term" && tile.ptySessionId) {
+				activeSessionIds.push(tile.ptySessionId);
+			}
+		}
+		window.shellApi.ptyCleanDetached?.(activeSessionIds);
+	}
 
 	// -- Initialize workspaces --
 
