@@ -259,6 +259,9 @@ async function init() {
 				tile?.ptySessionId || null,
 			);
 		},
+		onTileDblClick(tile) {
+			edgeIndicators.panToTile(tile);
+		},
 	});
 
 	// -- Edge indicators --
