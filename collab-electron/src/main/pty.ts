@@ -581,6 +581,16 @@ export function cleanupOrphanedClients(knownSessionIds: string[]): number {
     // or to a session not in our canvas state — it's an orphan candidate.
     const sessionExists = existingSessionNames.has(client.sessionName);
 
+    // Session is alive but not tracked by canvas — don't kill it.
+    // It may belong to another workspace or have been created externally.
+    if (sessionExists) {
+      console.warn(
+        `[pty] Skipping tmux client PID ${client.pid}` +
+        ` — session "${client.sessionName}" exists but is not in canvas state`,
+      );
+      continue;
+    }
+
     // Safety check: only kill if it's actually a tmux process
     if (!isTmuxProcess(client.pid)) {
       console.warn(
