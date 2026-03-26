@@ -68,7 +68,7 @@ function formatDate(ts: number): string {
 
 function getItemTypeClass(type: string): string {
 	const lower = type.toLowerCase();
-	const known = ["note", "doc", "pdf", "bookmark", "concept", "skill"];
+	const known = ["doc", "pdf", "bookmark", "concept", "skill"];
 	return known.includes(lower) ? lower : "";
 }
 

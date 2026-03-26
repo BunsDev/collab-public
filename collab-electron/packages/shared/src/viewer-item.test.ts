@@ -9,7 +9,7 @@ describe("parseFileToViewerItem", () => {
     const item = parseFileToViewerItem("/notes/hello.md", "# Hello\nWorld");
     expect(item.id).toBe("/notes/hello.md");
     expect(item.title).toBe("hello");
-    expect(item.type).toBe("note");
+    expect(item.type).toBe("MD");
     expect(item.text).toBe("# Hello\nWorld");
     expect(item.isEditable).toBe(true);
     expect(item.frontmatter).toBeUndefined();
@@ -108,17 +108,22 @@ describe("serializeViewerItem", () => {
     expect(serializeViewerItem(item, "Just text")).toBe("Just text");
   });
 
-  test("includes frontmatter when type is note", () => {
+  test("does not inject frontmatter for extension-derived type", () => {
     const item = parseFileToViewerItem("/notes/plain.md", "Just text");
-    // parseFileToViewerItem defaults type to "note", which gets serialized
     const result = serializeViewerItem(item, "Just text");
-    expect(result).toBe('---\ntype: "note"\n---\nJust text');
+    expect(result).toBe("Just text");
+  });
+
+  test("preserves explicit frontmatter type on save", () => {
+    const content = "---\ntype: note\n---\nBody";
+    const item = parseFileToViewerItem("/notes/plain.md", content);
+    const result = serializeViewerItem(item, "Body");
+    expect(result).toContain('type: "note"');
   });
 
   test("includes frontmatter for article type", () => {
-    const item = parseFileToViewerItem("/notes/a.md", "body");
-    item.type = "article";
-    item.url = "https://example.com";
+    const content = '---\ntype: article\nurl: "https://example.com"\n---\nbody';
+    const item = parseFileToViewerItem("/notes/a.md", content);
     const result = serializeViewerItem(item, "body");
     expect(result).toContain("---");
     expect(result).toContain('"article"');
@@ -126,9 +131,8 @@ describe("serializeViewerItem", () => {
     expect(result).toContain("body");
   });
 
-  test("omits type for 'md' and 'skill'", () => {
+  test("omits type when no explicit frontmatter type existed", () => {
     const item = parseFileToViewerItem("/notes/a.md", "body");
-    item.type = "md";
     item.url = "https://x.com";
     const result = serializeViewerItem(item, "body");
     expect(result).not.toContain("type:");
@@ -136,8 +140,8 @@ describe("serializeViewerItem", () => {
   });
 
   test("strips legacy fields", () => {
-    const item = parseFileToViewerItem("/notes/a.md", "body");
-    item.type = "article";
+    const content = "---\ntype: article\n---\nbody";
+    const item = parseFileToViewerItem("/notes/a.md", content);
     const result = serializeViewerItem(item, "body");
     expect(result).not.toContain("createdAt");
     expect(result).not.toContain("modifiedAt");

@@ -382,20 +382,15 @@ html:not(.dark) .filepath-parent {
 	font-weight: 600;
 	text-transform: uppercase;
 	letter-spacing: 0.05em;
-	color: var(--item-type-default);
+	color: var(--item-type-note);
 	margin: 0;
 	margin-bottom: 8px;
 	background-color: transparent;
-	border: 1px solid var(--item-type-default);
+	border: 1px solid var(--item-type-note);
 	font-family: inherit;
 }
 
 /* Item type badge variants */
-.item-type-badge.note {
-	color: var(--item-type-note);
-	border-color: var(--item-type-note);
-}
-
 .item-type-badge.doc {
 	color: var(--item-type-doc);
 	border-color: var(--item-type-doc);

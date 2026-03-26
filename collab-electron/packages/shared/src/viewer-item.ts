@@ -36,6 +36,12 @@ function isSkillPath(filePath: string): boolean {
   return idx >= 0 && p.includes("/skills/", idx);
 }
 
+function typeFromExtension(path: string): string {
+  const dot = path.lastIndexOf(".");
+  if (dot < 0) return "FILE";
+  return path.slice(dot + 1).toUpperCase();
+}
+
 export function parseFileToViewerItem(
   path: string,
   content: string,
@@ -63,7 +69,9 @@ export function parseFileToViewerItem(
   return {
     id: path,
     title: filenameFromPath(path),
-    type: isSkillPath(path) ? "skill" : (attributes.type ?? "note"),
+    type: isSkillPath(path)
+      ? "skill"
+      : (attributes.type ?? typeFromExtension(path)),
     isEditable: true,
     isTitleEditable: true,
     url: attributes.url,
@@ -94,7 +102,8 @@ export function serializeViewerItem(
   body: string,
 ): string {
   const attrs: Record<string, unknown> = {};
-  if (item.type && item.type !== "md" && item.type !== "skill")
+  const hadExplicitType = item.frontmatter?.type != null;
+  if (hadExplicitType && item.type !== "skill")
     attrs.type = item.type;
   if (item.url) attrs.url = item.url;
   if (item.summary) attrs.summary = item.summary;
