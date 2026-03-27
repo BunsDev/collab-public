@@ -268,6 +268,146 @@ describe("verifyTmuxAvailable", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Cross-backend reconnection tests
+//
+// These tests simulate the scenario where sidecar-created sessions exist on
+// disk while the global terminal mode is set to tmux (e.g. user changed the
+// setting, or the app restarts with the opposite mode).  The sidecar process
+// itself is not needed — we only exercise metadata preservation and routing
+// decisions that are pure filesystem + in-memory logic.
+// ---------------------------------------------------------------------------
+
+describe("cross-backend: discoverSessions preserves sidecar metadata", () => {
+  const sidecarId = "sidecar-xbackend-" + Date.now().toString(16);
+
+  afterEach(() => {
+    deleteSessionMeta(sidecarId);
+  });
+
+  test("discoverSessions in tmux mode must not delete sidecar session metadata", async () => {
+    // Simulate a sidecar session that was created before the mode switch.
+    writeSessionMeta(sidecarId, {
+      shell: "/bin/zsh",
+      cwd: "/tmp/myproject",
+      createdAt: new Date().toISOString(),
+      backend: "sidecar",
+    });
+
+    // discoverSessions runs during startup (via ptyDiscover IPC).
+    // In tmux mode it cross-references metadata files against tmux
+    // list-sessions.  A sidecar session has no matching tmux session.
+    await discoverSessions();
+
+    // The metadata must survive — reconnectSession reads it to route
+    // back to the sidecar backend.
+    const meta = readSessionMeta(sidecarId);
+    expect(meta).not.toBeNull();
+    expect(meta!.backend).toBe("sidecar");
+    expect(meta!.cwd).toBe("/tmp/myproject");
+  });
+
+  test("discoverSessions must not include sidecar sessions in tmux results", async () => {
+    // Sidecar metadata on disk, no matching tmux session.
+    writeSessionMeta(sidecarId, {
+      shell: "/bin/zsh",
+      cwd: "/tmp",
+      createdAt: new Date().toISOString(),
+      backend: "sidecar",
+    });
+
+    const discovered = await discoverSessions();
+
+    // Sidecar sessions should NOT appear as tmux-discovered sessions
+    // (the sidecar is a different backend), but the metadata must
+    // still exist on disk for reconnectSession to read.
+    const found = discovered.find((s) => s.sessionId === sidecarId);
+    expect(found).toBeUndefined();
+
+    // Metadata must still be intact.
+    expect(readSessionMeta(sidecarId)).not.toBeNull();
+  });
+});
+
+describe("cross-backend: cleanDetachedSessions skips sidecar sessions", () => {
+  const sidecarId = "sidecar-clean-" + Date.now().toString(16);
+
+  afterEach(() => {
+    deleteSessionMeta(sidecarId);
+  });
+
+  test("cleanDetachedSessions must not delete sidecar metadata", async () => {
+    writeSessionMeta(sidecarId, {
+      shell: "/bin/zsh",
+      cwd: "/home/user/project",
+      createdAt: new Date().toISOString(),
+      backend: "sidecar",
+    });
+
+    // cleanDetachedSessions is called with an empty active list.
+    // It should only clean tmux sessions, not touch sidecar metadata.
+    await cleanDetachedSessions([]);
+
+    const meta = readSessionMeta(sidecarId);
+    expect(meta).not.toBeNull();
+    expect(meta!.backend).toBe("sidecar");
+  });
+});
+
+describe("cross-backend: reconnectSession defaults correctly", () => {
+  const sidecarId = "sidecar-reconnect-" + Date.now().toString(16);
+  const tmuxId = "tmux-reconnect-" + Date.now().toString(16);
+
+  afterEach(() => {
+    deleteSessionMeta(sidecarId);
+    deleteSessionMeta(tmuxId);
+  });
+
+  test("reconnectSession reads per-session backend, not global mode", async () => {
+    // Write sidecar metadata.  reconnectSession should attempt the
+    // sidecar path (which will fail without the sidecar process), NOT
+    // the tmux path.
+    writeSessionMeta(sidecarId, {
+      shell: "/bin/zsh",
+      cwd: "/tmp",
+      createdAt: new Date().toISOString(),
+      backend: "sidecar",
+    });
+
+    // We can't actually reconnect without the sidecar process, but we
+    // can verify that the function does NOT fall through to the tmux
+    // path (which would throw "tmux session collab-{id} not found").
+    // Instead it should throw a sidecar-related error.
+    const { reconnectSession } = await import("./pty");
+    let error: Error | null = null;
+    try {
+      await reconnectSession(sidecarId, 80, 24, -1);
+    } catch (e) {
+      error = e as Error;
+    }
+
+    expect(error).not.toBeNull();
+    // If it fell through to tmux, the error would contain "tmux session".
+    // A sidecar-routed error will mention "Sidecar" or the client.
+    expect(error!.message).not.toContain("tmux session");
+  });
+
+  test("session with missing metadata defaults to tmux backend", async () => {
+    // No metadata on disk — legacy session.  Should default to tmux.
+    const { reconnectSession } = await import("./pty");
+    let error: Error | null = null;
+    try {
+      await reconnectSession(tmuxId, 80, 24, -1);
+    } catch (e) {
+      error = e as Error;
+    }
+
+    expect(error).not.toBeNull();
+    // Should try the tmux path and fail because no such tmux session.
+    expect(error!.message).toContain("tmux session");
+  });
+});
+
 describe("stripTrailingBlanks via scrollback", () => {
   test("scrollback capture strips trailing blank lines", async () => {
     const { sessionId } = await createSession("/tmp");
