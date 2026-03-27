@@ -4,7 +4,6 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as net from "node:net";
 import * as crypto from "crypto";
-import { execFileSync } from "node:child_process";
 import { type IDisposable } from "node-pty";
 import {
   getTmuxBin,
@@ -251,52 +250,6 @@ function attachClient(
   return ptyProcess;
 }
 
-function spawnDirect(
-  sessionId: string,
-  shell: string,
-  cwd: string,
-  cols: number,
-  rows: number,
-  senderWebContentsId?: number,
-): void {
-  const env = utf8Env();
-  env.COLLAB_PTY_SESSION_ID = sessionId;
-
-  const ptyProcess = pty.spawn(shell, [], {
-    name: "xterm-256color",
-    cols,
-    rows,
-    cwd,
-    env,
-  });
-
-  const disposables: IDisposable[] = [];
-
-  disposables.push(
-    ptyProcess.onData((data: string) => {
-      sendToSender(senderWebContentsId, "pty:data", { sessionId, data });
-      scheduleForegroundCheck(sessionId);
-    }),
-  );
-
-  disposables.push(
-    ptyProcess.onExit(({ exitCode }) => {
-      deleteSessionMeta(sessionId);
-      if (!shuttingDown) {
-        sendToSender(
-          senderWebContentsId,
-          "pty:exit",
-          { sessionId, exitCode },
-        );
-        sendToMainWindow("pty:exit", { sessionId, exitCode });
-      }
-      sessions.delete(sessionId);
-    }),
-  );
-
-  sessions.set(sessionId, { pty: ptyProcess, shell, disposables });
-}
-
 export async function createSession(
   cwd?: string,
   senderWebContentsId?: number,
@@ -344,32 +297,26 @@ export async function createSession(
     return { sessionId: sid, shell };
   }
 
-  if (mode === "direct") {
-    spawnDirect(
-      sessionId, shell, resolvedCwd, c, r, senderWebContentsId,
-    );
-  } else {
-    const name = tmuxSessionName(sessionId);
+  const name = tmuxSessionName(sessionId);
 
-    tmuxExec(
-      "new-session", "-d",
-      "-s", name,
-      "-c", resolvedCwd,
-      "-x", String(c),
-      "-y", String(r),
-    );
+  tmuxExec(
+    "new-session", "-d",
+    "-s", name,
+    "-c", resolvedCwd,
+    "-x", String(c),
+    "-y", String(r),
+  );
 
-    tmuxExec(
-      "set-environment", "-t", name,
-      "COLLAB_PTY_SESSION_ID", sessionId,
-    );
-    tmuxExec(
-      "set-environment", "-t", name,
-      "SHELL", shell,
-    );
+  tmuxExec(
+    "set-environment", "-t", name,
+    "COLLAB_PTY_SESSION_ID", sessionId,
+  );
+  tmuxExec(
+    "set-environment", "-t", name,
+    "SHELL", shell,
+  );
 
-    attachClient(sessionId, c, r, senderWebContentsId);
-  }
+  attachClient(sessionId, c, r, senderWebContentsId);
 
   writeSessionMeta(sessionId, {
     shell,
@@ -405,13 +352,6 @@ export async function reconnectSession(
   mode: "tmux" | "sidecar";
 }> {
   const mode = terminalMode();
-
-  if (mode === "direct") {
-    deleteSessionMeta(sessionId);
-    throw new Error(
-      "Session reconnection is not available in direct PTY mode",
-    );
-  }
 
   if (mode === "sidecar") {
     const client = getSidecarClient();
@@ -566,13 +506,11 @@ export async function killSession(
     sessions.delete(sessionId);
   }
 
-  if (mode === "tmux") {
-    const name = tmuxSessionName(sessionId);
-    try {
-      tmuxExec("kill-session", "-t", name);
-    } catch {
-      // Session may already be dead
-    }
+  const name = tmuxSessionName(sessionId);
+  try {
+    tmuxExec("kill-session", "-t", name);
+  } catch {
+    // Session may already be dead
   }
 
   deleteSessionMeta(sessionId);
@@ -660,8 +598,6 @@ export async function discoverSessions(): Promise<DiscoveredSession[]> {
     }
   }
 
-  if (mode === "direct") return [];
-
   let tmuxNames: string[];
   try {
     const raw = tmuxExec(
@@ -719,21 +655,6 @@ export async function getForegroundProcess(
     try {
       const client = getSidecarClient();
       return await client.getForeground(sessionId);
-    } catch {
-      return null;
-    }
-  }
-
-  if (terminalMode() !== "tmux") {
-    const session = sessions.get(sessionId);
-    if (!session) return null;
-    try {
-      const pid = session.pty.pid;
-      const out = execFileSync(
-        "ps", ["-o", "comm=", "-p", String(pid)],
-        { encoding: "utf8", timeout: 2000 },
-      ).trim();
-      return out || null;
     } catch {
       return null;
     }
