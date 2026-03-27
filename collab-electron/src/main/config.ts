@@ -103,5 +103,5 @@ export function getTerminalMode(): TerminalMode {
   if (mode === "sidecar" || mode === "tmux") {
     return mode;
   }
-  return "tmux";
+  return "sidecar";
 }

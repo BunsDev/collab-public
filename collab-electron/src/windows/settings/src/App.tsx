@@ -304,19 +304,19 @@ type TerminalMode = "tmux" | "sidecar";
 
 const TERMINAL_MODES: { value: TerminalMode; label: string; description: string }[] = [
   {
-    value: "tmux",
-    label: "tmux",
-    description: "May cause scrollback artifacts. Claude Code agent teams run in individual tmux panes.",
-  },
-  {
     value: "sidecar",
     label: "node-pty",
     description: "Clean scrollback rendering.",
   },
+  {
+    value: "tmux",
+    label: "tmux",
+    description: "May cause scrollback artifacts. Claude Code agent teams run in individual tmux panes.",
+  },
 ];
 
 function TerminalPane() {
-  const [mode, setMode] = useState<TerminalMode>("tmux");
+  const [mode, setMode] = useState<TerminalMode>("sidecar");
 
   useEffect(() => {
     api.getPref("terminalMode")
