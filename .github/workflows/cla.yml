@@ -27,8 +27,8 @@ jobs:
           PR_AUTHOR=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq '.user.login')
 
           # Search all comments on this PR for the CLA phrase from the PR author
-          MATCH=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" \
-            --jq --arg author "$PR_AUTHOR" --arg phrase "$CLA_PHRASE" \
+          MATCH=$(gh api "repos/${{ github.repository }}/issues/${PR_NUMBER}/comments" --paginate \
+            | jq --arg author "$PR_AUTHOR" --arg phrase "$CLA_PHRASE" \
             '[.[] | select(.user.login == $author and (.body | contains($phrase)))] | first // empty')
 
           if [ -z "$MATCH" ]; then
