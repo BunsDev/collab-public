@@ -302,7 +302,12 @@ function ShortcutList({ items }: { items: { label: string; keys: string }[] }) {
 
 type TerminalMode = "tmux" | "sidecar";
 
-const TERMINAL_MODES: { value: TerminalMode; label: string; description: string }[] = [
+const TERMINAL_MODES: {
+  value: TerminalMode;
+  label: string;
+  description: string;
+  deprecated?: boolean;
+}[] = [
   {
     value: "sidecar",
     label: "node-pty",
@@ -312,6 +317,7 @@ const TERMINAL_MODES: { value: TerminalMode; label: string; description: string 
     value: "tmux",
     label: "tmux",
     description: "May cause scrollback artifacts. Claude Code agent teams run in individual tmux panes.",
+    deprecated: true,
   },
 ];
 
@@ -343,7 +349,7 @@ function TerminalPane() {
       <div className="space-y-2">
         <p className="text-sm font-medium">Terminal backend</p>
         <div className="space-y-1.5">
-          {TERMINAL_MODES.map(({ value, label, description }) => (
+          {TERMINAL_MODES.map(({ value, label, description, deprecated }) => (
             <button
               key={value}
               type="button"
@@ -375,7 +381,14 @@ function TerminalPane() {
               </div>
               <div className="space-y-0.5">
                 <p className="text-sm font-medium">{label}</p>
-                <p className="text-xs text-muted-foreground">{description}</p>
+                <p className="text-xs text-muted-foreground">
+                  {description}
+                  {deprecated && (
+                    <span style={{ color: "var(--destructive, #ef4444)" }}>
+                      {" "}Deprecated — will be removed in a future release.
+                    </span>
+                  )}
+                </p>
               </div>
             </button>
           ))}
