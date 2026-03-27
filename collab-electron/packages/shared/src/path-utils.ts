@@ -105,16 +105,11 @@ export function splitDisplayPath(value: string): {
   if (!input) {
     return { parent: "", name: "" };
   }
-  const separator = pathKind(input) === "posix" ? "/" : "\\";
-  const segments = splitSegments(input);
-  if (segments.length === 0) {
-    return { parent: "", name: input };
-  }
-  const name = segments[segments.length - 1] ?? input;
-  const parentSegments = segments.slice(0, -1);
-  const parent = parentSegments.length > 0
-    ? `${parentSegments.join(separator)}${separator}`
-    : "";
+  const kind = pathKind(input);
+  const separator = kind === "windows" || kind === "wsl-unc" ? "\\" : "/";
+  const parts = input.split(separator === "/" ? /\// : /[\\/]/);
+  const name = parts.pop() || input;
+  const parent = parts.length > 0 ? parts.join(separator) + separator : "";
   return { parent, name };
 }
 
