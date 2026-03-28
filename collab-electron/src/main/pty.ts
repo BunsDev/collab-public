@@ -694,6 +694,33 @@ export async function discoverSessions(): Promise<DiscoveredSession[]> {
   return result;
 }
 
+export async function captureSession(
+  sessionId: string,
+  lines = 50,
+): Promise<string> {
+  const backend = sessionBackend(sessionId);
+
+  if (backend === "sidecar") {
+    try {
+      const client = getSidecarClient();
+      return await client.captureSession(sessionId, lines);
+    } catch {
+      return "";
+    }
+  }
+
+  const name = tmuxSessionName(sessionId);
+  try {
+    const raw = tmuxExec(
+      "capture-pane", "-t", name,
+      "-p", "-S", `-${lines}`,
+    );
+    return stripTrailingBlanks(raw);
+  } catch {
+    return "";
+  }
+}
+
 export async function getForegroundProcess(
   sessionId: string,
 ): Promise<string | null> {

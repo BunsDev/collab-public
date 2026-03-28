@@ -32,10 +32,12 @@ export function findAutoPlacement(existingTiles, width, height) {
  * Create the canvas RPC request handler.
  *
  * Methods: tileList, tileAdd, tileRemove, tileMove, tileResize,
- *          viewportGet, viewportSet.
+ *          viewportGet, viewportSet, terminalWrite, terminalRead,
+ *          tileFocus.
  */
 export function createCanvasRpc({
 	tileManager, viewportState, viewport, workspaceManager,
+	edgeIndicators,
 }) {
 	function respond(requestId, result) {
 		window.shellApi.canvasRpcResponse({ requestId, result });
@@ -56,7 +58,7 @@ export function createCanvasRpc({
 		return tile;
 	}
 
-	return function handleCanvasRpc(request) {
+	return async function handleCanvasRpc(request) {
 		const { requestId, method, params } = request;
 
 		try {
@@ -83,7 +85,12 @@ export function createCanvasRpc({
 						: findAutoPlacement(tiles, size.width, size.height);
 
 					let tile;
-					if (tileType === "graph") {
+					if (tileType === "term") {
+						tile = tileManager.createCanvasTile(
+							"term", pos.x, pos.y,
+						);
+						tileManager.spawnTerminalWebview(tile);
+					} else if (tileType === "graph") {
 						const ws = workspaceManager.getActiveWorkspace();
 						const wsPath = ws?.path ?? "";
 						tile = tileManager.createGraphTile(
@@ -158,6 +165,65 @@ export function createCanvasRpc({
 					}
 					viewport.updateCanvas();
 					tileManager.saveCanvasDebounced();
+					result = {};
+					break;
+				}
+				case "terminalWrite": {
+					const tile = requireTile(requestId, params.tileId);
+					if (!tile) return;
+					if (tile.type !== "term") {
+						respondError(requestId, 4, "Tile is not a terminal");
+						return;
+					}
+					if (!tile.ptySessionId) {
+						respondError(requestId, 4, "Terminal has no session");
+						return;
+					}
+					await window.shellApi.ptyWrite(
+						tile.ptySessionId, params.input,
+					);
+					result = {};
+					break;
+				}
+				case "terminalRead": {
+					const tile = requireTile(requestId, params.tileId);
+					if (!tile) return;
+					if (tile.type !== "term") {
+						respondError(requestId, 4, "Tile is not a terminal");
+						return;
+					}
+					if (!tile.ptySessionId) {
+						respondError(requestId, 4, "Terminal has no session");
+						return;
+					}
+					const lines = params.lines ?? 50;
+					const output = await window.shellApi.ptyCapture(
+						tile.ptySessionId, lines,
+					);
+					result = { output };
+					break;
+				}
+				case "tileFocus": {
+					const ids = params.tileIds;
+					if (!Array.isArray(ids) || ids.length === 0) {
+						respondError(
+							requestId, 4,
+							"tileIds must be a non-empty array",
+						);
+						return;
+					}
+					const focusTiles = [];
+					for (const id of ids) {
+						const t = getTile(id);
+						if (!t) {
+							respondError(
+								requestId, 3, `Tile not found: ${id}`,
+							);
+							return;
+						}
+						focusTiles.push(t);
+					}
+					edgeIndicators.panToTiles(focusTiles);
 					result = {};
 					break;
 				}

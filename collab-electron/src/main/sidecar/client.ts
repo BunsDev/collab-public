@@ -178,6 +178,17 @@ export class SidecarClient {
     return result.command;
   }
 
+  async captureSession(
+    sessionId: string,
+    lines = 50,
+  ): Promise<string> {
+    const result = (await this.rpc("session.capture", {
+      sessionId,
+      lines,
+    })) as { output: string };
+    return result.output;
+  }
+
   async sendSignal(
     sessionId: string,
     signal: string,

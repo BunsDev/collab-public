@@ -118,6 +118,9 @@ COMMANDS
   tile rm <id>                       Remove a tile
   tile move <id> --pos x,y           Move a tile
   tile resize <id> --size w,h        Resize a tile
+  tile focus <id> [<id>...]          Bring tiles into view
+  terminal write <id> <input>        Send input to a terminal tile
+  terminal read <id> [--lines N]     Read output from a terminal tile
   help, --help                       Show this help
 
 TILE ADD OPTIONS
@@ -131,6 +134,9 @@ TILE MOVE OPTIONS
 
 TILE RESIZE OPTIONS
   --size w,h      New size in grid units
+
+TERMINAL READ OPTIONS
+  --lines N       Number of lines to capture (default: 50)
 
 COORDINATES
   All coordinates are in grid units.
@@ -282,6 +288,55 @@ cmd_tile_resize() {
   rpc_call "canvas.tileResize" "{\"tileId\":\"$tile_id\",\"size\":{\"width\":$px_w,\"height\":$px_h}}"
 }
 
+cmd_tile_focus() {
+  [[ $# -ge 1 ]] || die "tile focus requires at least one tile id"
+  local ids=""
+  local first=true
+  for id in "$@"; do
+    if [[ "$first" == true ]]; then
+      ids="\"$id\""
+      first=false
+    else
+      ids="$ids,\"$id\""
+    fi
+  done
+  rpc_call "canvas.tileFocus" "{\"tileIds\":[$ids]}"
+}
+
+cmd_terminal_write() {
+  [[ $# -ge 2 ]] || die "terminal write requires <id> <input>"
+  local tile_id="$1"
+  local input="$2"
+  # Escape for JSON: backslashes, double quotes, newlines, tabs
+  input="${input//\\/\\\\}"
+  input="${input//\"/\\\"}"
+  input="${input//$'\n'/\\n}"
+  input="${input//$'\r'/\\r}"
+  input="${input//$'\t'/\\t}"
+  rpc_call "canvas.terminalWrite" \
+    "{\"tileId\":\"$tile_id\",\"input\":\"$input\"}"
+}
+
+cmd_terminal_read() {
+  local tile_id="" lines=50
+
+  [[ $# -ge 1 ]] || die "terminal read requires a tile id"
+  tile_id="$1"; shift
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --lines)
+        [[ $# -ge 2 ]] || die "--lines requires a number"
+        lines="$2"; shift 2
+        ;;
+      *) die "unknown option: $1" ;;
+    esac
+  done
+
+  rpc_call "canvas.terminalRead" \
+    "{\"tileId\":\"$tile_id\",\"lines\":$lines}"
+}
+
 # --- main dispatch ---------------------------------------------------------
 
 [[ $# -ge 1 ]] || usage
@@ -303,7 +358,17 @@ case "$1" in
       rm)     cmd_tile_rm "$@" ;;
       move)   cmd_tile_move "$@" ;;
       resize) cmd_tile_resize "$@" ;;
+      focus)  cmd_tile_focus "$@" ;;
       *)      die "unknown tile subcommand: $subcmd" ;;
+    esac
+    ;;
+  terminal)
+    [[ $# -ge 2 ]] || die "terminal requires a subcommand (write, read)"
+    subcmd="$2"; shift 2
+    case "$subcmd" in
+      write) cmd_terminal_write "$@" ;;
+      read)  cmd_terminal_read "$@" ;;
+      *)     die "unknown terminal subcommand: $subcmd" ;;
     esac
     ;;
   *)

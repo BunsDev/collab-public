@@ -181,6 +181,10 @@ export class SidecarServer {
         return this.handleSignal(
           sock, id, params as Record<string, unknown>,
         );
+      case "session.capture":
+        return this.handleCapture(
+          sock, id, params as Record<string, unknown>,
+        );
       default:
         sock.write(makeError(id, -32601, `Unknown method: ${method}`));
     }
@@ -433,6 +437,24 @@ export class SidecarServer {
     } catch (err) {
       sock.write(makeError(id, -32000, String(err)));
     }
+  }
+
+  private handleCapture(
+    sock: net.Socket,
+    id: number,
+    params: Record<string, unknown>,
+  ): void {
+    const session = this.sessions.get(params.sessionId as string);
+    if (!session) {
+      sock.write(makeError(id, -32000, "Session not found"));
+      return;
+    }
+    const snapshot = session.ringBuffer.snapshot();
+    const text = snapshot.toString("utf-8");
+    const lines = (params.lines as number) || 50;
+    const allLines = text.split("\n");
+    const tail = allLines.slice(-lines).join("\n");
+    sock.write(makeResponse(id, { output: tail }));
   }
 
   private killSession(sessionId: string): void {

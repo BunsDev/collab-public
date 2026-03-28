@@ -118,6 +118,81 @@ export function createEdgeIndicators({
 		panAnimRaf = requestAnimationFrame(step);
 	}
 
+	function panToTiles(tilesToFocus) {
+		if (tilesToFocus.length === 1) {
+			panToTile(tilesToFocus[0]);
+			return;
+		}
+
+		if (panAnimRaf) {
+			cancelAnimationFrame(panAnimRaf);
+			panAnimRaf = null;
+		}
+
+		const PADDING = 60;
+		let minX = Infinity;
+		let minY = Infinity;
+		let maxX = -Infinity;
+		let maxY = -Infinity;
+		for (const t of tilesToFocus) {
+			if (t.x < minX) minX = t.x;
+			if (t.y < minY) minY = t.y;
+			if (t.x + t.width > maxX) maxX = t.x + t.width;
+			if (t.y + t.height > maxY) maxY = t.y + t.height;
+		}
+
+		const vw = canvasEl.clientWidth;
+		const vh = canvasEl.clientHeight;
+		const bboxW = maxX - minX + PADDING * 2;
+		const bboxH = maxY - minY + PADDING * 2;
+		const zoom = Math.min(vw / bboxW, vh / bboxH, 1);
+		const cx = (minX + maxX) / 2;
+		const cy = (minY + maxY) / 2;
+		const targetX = vw / 2 - cx * zoom;
+		const targetY = vh / 2 - cy * zoom;
+
+		const startX = viewportState.panX;
+		const startY = viewportState.panY;
+		const startZoom = viewportState.zoom;
+		const startTime = performance.now();
+		const DURATION = 350;
+
+		function easeOut(t) {
+			return 1 - Math.pow(1 - t, 3);
+		}
+
+		const tileDOMs = getTileDOMs();
+		for (const t of tilesToFocus) {
+			const dom = tileDOMs.get(t.id);
+			if (dom) {
+				dom.container.classList.add("edge-indicator-highlight");
+				setTimeout(() => {
+					dom.container.classList.remove(
+						"edge-indicator-highlight",
+					);
+				}, 1200);
+			}
+		}
+
+		function step(now) {
+			const elapsed = now - startTime;
+			const t = Math.min(elapsed / DURATION, 1);
+			const e = easeOut(t);
+			viewportState.panX = startX + (targetX - startX) * e;
+			viewportState.panY = startY + (targetY - startY) * e;
+			viewportState.zoom = startZoom + (zoom - startZoom) * e;
+			onViewportUpdate();
+
+			if (t < 1) {
+				panAnimRaf = requestAnimationFrame(step);
+			} else {
+				panAnimRaf = null;
+			}
+		}
+
+		panAnimRaf = requestAnimationFrame(step);
+	}
+
 	function removeTooltip() {
 		if (activeTooltipEl) {
 			activeTooltipEl.remove();
@@ -238,5 +313,6 @@ export function createEdgeIndicators({
 			updateEdgeIndicators();
 		},
 		panToTile,
+		panToTiles,
 	};
 }

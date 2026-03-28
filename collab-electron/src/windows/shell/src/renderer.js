@@ -300,6 +300,7 @@ async function init() {
 
 	const handleCanvasRpc = createCanvasRpc({
 		tileManager, viewportState, viewport, workspaceManager,
+		edgeIndicators,
 	});
 
 	// -- Wire viewport updates --
