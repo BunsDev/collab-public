@@ -3,7 +3,7 @@ import {
   GearSix,
   Keyboard,
   Palette,
-  Puzzle,
+  PuzzlePiece,
   Sun,
   Moon,
   Monitor,
@@ -506,7 +506,7 @@ const NAV_ITEMS: {
 }[] = [
     { id: "appearance", label: "Appearance", icon: Palette },
     { id: "terminal", label: "Terminal", icon: Terminal },
-    { id: "integrations", label: "Integrations", icon: Puzzle },
+    { id: "integrations", label: "Integrations", icon: PuzzlePiece },
     { id: "controls", label: "Controls", icon: Keyboard },
   ];
 
