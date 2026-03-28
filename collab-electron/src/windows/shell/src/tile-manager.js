@@ -123,6 +123,13 @@ export function createTileManager({
 	}
 
 	function forwardClickToWebview(webview, mouseEvent) {
+		if (!webview.isConnected) return;
+		if (
+			typeof webview.isLoading === "function" &&
+			webview.isLoading()
+		) {
+			return;
+		}
 		const rect = webview.getBoundingClientRect();
 		if (rect.width === 0 || rect.height === 0) return;
 		const x = Math.round(

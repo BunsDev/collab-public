@@ -22,6 +22,7 @@ import {
   getPref,
   setPref,
   type WindowState,
+  type TerminalTarget,
 } from "./config";
 import { registerIpcHandlers, setMainWindow } from "./ipc";
 import { registerCanvasRpc } from "./canvas-rpc";
@@ -45,6 +46,7 @@ import {
 import { stopImageWorker } from "./image-service";
 import { installCli } from "./cli-installer";
 import { listTerminalTargets } from "./terminal-target";
+import { readSessionMeta } from "./tmux";
 
 // macOS apps launched from Finder don't inherit the user's shell
 // LANG, so child processes (tmux, shells) default to ASCII.
@@ -544,8 +546,22 @@ ipcMain.handle(
 
 ipcMain.handle(
   "pty:create",
-  (event, params?: { cwd?: string; cols?: number; rows?: number }) =>
-    pty.createSession(params?.cwd, event.sender.id, params?.cols, params?.rows),
+  (
+    event,
+    params?: {
+      cwd?: string;
+      cols?: number;
+      rows?: number;
+      target?: TerminalTarget;
+    },
+  ) =>
+    pty.createSession(
+      params?.cwd,
+      event.sender.id,
+      params?.cols,
+      params?.rows,
+      params?.target,
+    ),
 );
 
 ipcMain.handle(
@@ -600,10 +616,7 @@ ipcMain.handle(
 
 ipcMain.handle(
   "pty:read-meta",
-  (_event, sessionId: string) => {
-    const { readSessionMeta } = require("./tmux");
-    return readSessionMeta(sessionId);
-  },
+  (_event, sessionId: string) => readSessionMeta(sessionId),
 );
 
 ipcMain.handle(

@@ -32,10 +32,13 @@ function App() {
     const isRestored = params.get("restored") === "1";
     const cwd = params.get("cwd") || undefined;
 
-    const createFreshSession = () => {
+    const createFreshSession = (
+      target?: string,
+      nextCwd?: string,
+    ) => {
       const est = estimateTermSize();
       window.api
-        .ptyCreate(cwd, est.cols, est.rows)
+        .ptyCreate(nextCwd ?? cwd, est.cols, est.rows, target)
         .then((result) => {
           setSessionId(result.sessionId);
           window.api.notifyPtySessionId(
@@ -77,31 +80,22 @@ function App() {
         })
         .catch(async () => {
           setRestored(false);
-          const est = estimateTermSize();
           // Recover the original working directory from session
           // metadata so the fallback session opens in the right place.
           let fallbackCwd = cwd;
-          if (!fallbackCwd && existingSessionId) {
+          let fallbackTarget: string | undefined;
+          if (existingSessionId) {
             try {
               const meta = await window.api.ptyReadMeta(
                 existingSessionId,
               );
-              if (meta?.cwd) fallbackCwd = meta.cwd;
+              if (!fallbackCwd && meta?.cwd) fallbackCwd = meta.cwd;
+              if (meta?.target) fallbackTarget = meta.target;
             } catch {
               // Metadata unavailable — fall through to default
             }
           }
-          window.api
-            .ptyCreate(fallbackCwd, est.cols, est.rows)
-            .then((result) => {
-              setSessionId(result.sessionId);
-              window.api.notifyPtySessionId(
-                result.sessionId,
-              );
-            })
-            .catch(() => {
-              setExited(true);
-            });
+          createFreshSession(fallbackTarget, fallbackCwd);
         });
 
       return;

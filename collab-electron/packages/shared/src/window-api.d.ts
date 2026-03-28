@@ -215,7 +215,12 @@ export interface CollabApi {
   ) => Promise<Backlink[]>;
 
   // PTY
-  ptyCreate: (cwd?: string, cols?: number, rows?: number) => Promise<PtySession>;
+  ptyCreate: (
+    cwd?: string,
+    cols?: number,
+    rows?: number,
+    target?: string,
+  ) => Promise<PtySession>;
   ptyWrite: (
     sessionId: string,
     data: string,
@@ -253,6 +258,7 @@ export interface CollabApi {
     shell: string;
     cwd: string;
     createdAt: string;
+    target?: string;
     backend?: "tmux" | "sidecar";
   } | null>;
   ptyCleanDetached: (activeSessionIds: string[]) => Promise<void>;

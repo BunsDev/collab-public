@@ -12,6 +12,7 @@ import { createPanel } from "./panel-manager.js";
 import { createWorkspaceManager } from "./workspace-manager.js";
 import { createCanvasRpc } from "./canvas-rpc.js";
 import { createTileManager } from "./tile-manager.js";
+import { updateTileTitle } from "./tile-renderer.js";
 import { normalizeCommandName } from "@collab/shared/path-utils";
 
 const CANVAS_DBLCLICK_SUPPRESS_MS = 500;
@@ -219,6 +220,30 @@ async function init() {
 	});
 	terminalPanel.initPrefs(prefTermWidth, prefTermVisible);
 
+	function syncTerminalTileMeta(tile, meta) {
+		if (!meta) return;
+		tile.cwd = meta.cwdHostPath || meta.cwd || tile.cwd;
+		tile.displayName = meta.displayName || tile.displayName;
+		const dom = tileManager.getTileDOMs().get(tile.id);
+		if (dom) {
+			updateTileTitle(dom, tile);
+		}
+	}
+
+	function buildTerminalListEntry(tile, meta) {
+		if (!tile?.ptySessionId || !meta) return null;
+		return {
+			sessionId: tile.ptySessionId,
+			displayName: meta.displayName || "Terminal",
+			commandName: normalizeCommandName(
+				meta.command || meta.shell || "shell",
+			) || "shell",
+			cwd: meta.cwdHostPath || meta.cwd || tile.cwd || "~",
+			foreground: null,
+			tileId: tile.id,
+		};
+	}
+
 	// -- Workspace manager --
 
 	const workspaceManager = createWorkspaceManager({
@@ -269,16 +294,11 @@ async function init() {
 			const session = discovered.find(
 				(entry) => entry.sessionId === tile.ptySessionId,
 			);
-			terminalListWebview.send("terminal-list:add", {
-				sessionId: tile.ptySessionId,
-				displayName: session?.meta?.displayName || "Terminal",
-				commandName: normalizeCommandName(
-					session?.meta?.command || session?.meta?.shell || "shell",
-				) || "shell",
-				cwd: session?.meta?.cwdHostPath || session?.meta?.cwd || tile.cwd || "~",
-				foreground: null,
-				tileId: tile.id,
-			});
+			syncTerminalTileMeta(tile, session?.meta);
+			const entry = buildTerminalListEntry(tile, session?.meta);
+			if (entry) {
+				terminalListWebview.send("terminal-list:add", entry);
+			}
 		},
 		onTerminalTileClosed(sessionId) {
 			terminalListWebview.send(
@@ -984,16 +1004,14 @@ async function init() {
 					const disc = discovered.find(
 						(d) => d.sessionId === tile.ptySessionId,
 					);
-					initEntries.push({
-						sessionId: tile.ptySessionId,
-						displayName: disc?.meta?.displayName || "Terminal",
-						commandName: normalizeCommandName(
-							disc?.meta?.command || disc?.meta?.shell || "shell",
-						) || "shell",
-						cwd: disc?.meta?.cwdHostPath || disc?.meta?.cwd || "~",
-						foreground: null,
-						tileId: tile.id,
-					});
+					if (!disc) {
+						continue;
+					}
+					syncTerminalTileMeta(tile, disc.meta);
+					const entry = buildTerminalListEntry(tile, disc.meta);
+					if (entry) {
+						initEntries.push(entry);
+					}
 				}
 			}
 

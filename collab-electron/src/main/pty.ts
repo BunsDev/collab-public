@@ -19,7 +19,7 @@ import {
   type SessionMeta,
 } from "./tmux";
 import { cleanupEndpoint } from "./ipc-endpoint";
-import { getTerminalTarget } from "./config";
+import { getTerminalTarget, type TerminalTarget } from "./config";
 import { SidecarClient } from "./sidecar/client";
 import {
   SIDECAR_SOCKET_PATH,
@@ -290,6 +290,7 @@ export async function createSession(
   senderWebContentsId?: number,
   cols?: number,
   rows?: number,
+  preferredTarget?: TerminalTarget,
 ): Promise<{
   sessionId: string;
   shell: string;
@@ -304,7 +305,7 @@ export async function createSession(
   const c = cols || 80;
   const r = rows || 24;
   const resolvedTarget = resolveTerminalTarget(
-    getTerminalTarget(),
+    preferredTarget ?? getTerminalTarget(),
     resolvedCwd,
   );
 
