@@ -63,7 +63,7 @@
 				"to": "terminfo"
 			},
 			{
-				"from": "scripts/collab-cli.sh",
+				"from": "cli/collab-cli.sh",
 				"to": "collab-cli.sh"
 			}
 		],

@@ -18,7 +18,7 @@ function getCliSource(): string {
   if (app.isPackaged) {
     return join(process.resourcesPath, "collab-cli.sh");
   }
-  return join(app.getAppPath(), "scripts", "collab-cli.sh");
+  return join(app.getAppPath(), "cli", "collab-cli.sh");
 }
 
 export function installCli(): void {
