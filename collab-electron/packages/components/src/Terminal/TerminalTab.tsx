@@ -151,7 +151,7 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 				}
 			}
 			if (e.type === "keydown" && e.shiftKey && e.key === "Insert") {
-				void pasteClipboardText();
+				pasteFromShortcut();
 				return false;
 			}
 			if (e.type === "keydown" && e.metaKey) {
@@ -204,7 +204,7 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 				);
 			}
 		};
-		window.api.onPtyData(handleData);
+		window.api.onPtyData(sessionId, handleData);
 
 		term.onResize(({ cols, rows }) => {
 			window.api.ptyResize(sessionId, cols, rows);
@@ -215,22 +215,25 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 			if (!selection) return;
 			event.clipboardData?.setData("text/plain", selection);
 			event.preventDefault();
+			event.stopImmediatePropagation();
 		};
 
 		const handlePaste = (event: ClipboardEvent) => {
 			if (suppressPasteEvent) {
 				suppressPasteEvent = false;
 				event.preventDefault();
+				event.stopImmediatePropagation();
 				return;
 			}
 			const text = event.clipboardData?.getData("text/plain");
 			if (!text) return;
 			window.api.ptyWrite(sessionId, text);
 			event.preventDefault();
+			event.stopImmediatePropagation();
 		};
 
-		container.addEventListener("copy", handleCopy);
-		container.addEventListener("paste", handlePaste);
+		container.addEventListener("copy", handleCopy, true);
+		container.addEventListener("paste", handlePaste, true);
 
 		const offShellBlur = window.api.onShellBlur(() => {
 			term.blur();
@@ -266,9 +269,9 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 			window.removeEventListener("focus", onWindowFocus);
 			mediaQuery.removeEventListener("change", onThemeChange);
 			resizeObserver.disconnect();
-			container.removeEventListener("copy", handleCopy);
-			container.removeEventListener("paste", handlePaste);
-			window.api.offPtyData(handleData);
+			container.removeEventListener("copy", handleCopy, true);
+			container.removeEventListener("paste", handlePaste, true);
+			window.api.offPtyData(sessionId, handleData);
 			offShellBlur();
 			term.dispose();
 			fitRef.current = null;

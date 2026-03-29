@@ -46,6 +46,7 @@ interface Session {
   dataServer: net.Server;
   dataClient: net.Socket | null;
   socketPath: string;
+  hasAttachedClient: boolean;
   /** When non-null, PTY output is queued here instead of sent to client. */
   reconnectQueue: Buffer[] | null;
 }
@@ -262,6 +263,7 @@ export class SidecarServer {
       dataServer: null!,
       dataClient: null,
       socketPath,
+      hasAttachedClient: false,
       reconnectQueue: null,
     }, {
       cwdGuestPath: params.cwdGuestPath,
@@ -312,7 +314,13 @@ export class SidecarServer {
           client.write(queued);
         }
         session.reconnectQueue = null;
+      } else if (!session.hasAttachedClient) {
+        const snapshot = ringBuffer.snapshot();
+        if (snapshot.length > 0) {
+          client.write(snapshot);
+        }
       }
+      session.hasAttachedClient = true;
 
       // Pipe client input to PTY
       client.on("data", (data) => {

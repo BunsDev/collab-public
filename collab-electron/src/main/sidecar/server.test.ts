@@ -156,6 +156,34 @@ async function createSession(
   return resp.result as SessionCreateResult;
 }
 
+function earlyOutputShell(marker: string): {
+  command: string;
+  args: string[];
+  displayName: string;
+  target: string;
+} {
+  if (process.platform === "win32") {
+    return {
+      command: "powershell.exe",
+      args: [
+        "-NoLogo",
+        "-NoExit",
+        "-Command",
+        `Write-Output '${marker}'`,
+      ],
+      displayName: "PowerShell",
+      target: "powershell",
+    };
+  }
+
+  return {
+    command: "/bin/sh",
+    args: ["-lc", `echo ${marker}; exec /bin/sh`],
+    displayName: "sh",
+    target: "shell",
+  };
+}
+
 /**
  * Collect newline-delimited JSON messages from a socket
  * into a shared array, useful for listening for notifications.
@@ -290,6 +318,36 @@ describe("SidecarServer session lifecycle", () => {
     });
 
     assert.ok(output.includes("sidecar-test-output"));
+
+    data.destroy();
+    ctrl.destroy();
+  });
+
+  it("replays early PTY output to the first attached data client", async () => {
+    server = createServer();
+    await server.start();
+
+    const ctrl = await connectControl();
+    const marker = "early-sidecar-marker";
+    const shell = earlyOutputShell(marker);
+    const createResp = await rpcCall(ctrl, 1, "session.create", {
+      command: shell.command,
+      args: shell.args,
+      displayName: shell.displayName,
+      target: shell.target,
+      cwdHostPath: TEST_CWD,
+      cwd: TEST_CWD,
+      cols: 80,
+      rows: 24,
+    });
+    const { socketPath } = createResp.result as SessionCreateResult;
+
+    await sleep(300);
+
+    const data = await connectDataSocket(socketPath);
+    const output = await waitForOutput(data, marker);
+
+    assert.ok(output.includes(marker));
 
     data.destroy();
     ctrl.destroy();

@@ -263,10 +263,10 @@ export interface CollabApi {
   } | null>;
   ptyCleanDetached: (activeSessionIds: string[]) => Promise<void>;
   notifyPtySessionId: (sessionId: string) => void;
-  onPtyData: (cb: PtyDataCb) => void;
-  offPtyData: (cb: PtyDataCb) => void;
-  onPtyExit: (cb: PtyExitCb) => void;
-  offPtyExit: (cb: PtyExitCb) => void;
+  onPtyData: (sessionId: string, cb: PtyDataCb) => void;
+  offPtyData: (sessionId: string, cb: PtyDataCb) => void;
+  onPtyExit: (sessionId: string, cb: PtyExitCb) => void;
+  offPtyExit: (sessionId: string, cb: PtyExitCb) => void;
   onCdTo: (cb: CdToCb) => void;
   offCdTo: (cb: CdToCb) => void;
 

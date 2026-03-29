@@ -34,7 +34,7 @@ function waitForSessionReady(sessionId: string): Promise<boolean> {
   return new Promise((resolve) => {
     const onData = (p: {
       sessionId: string;
-      data: string;
+      data: Uint8Array;
     }) => {
       if (p.sessionId === sessionId) {
         cleanup();
@@ -51,11 +51,11 @@ function waitForSessionReady(sessionId: string): Promise<boolean> {
       }
     };
     const cleanup = () => {
-      window.api.offPtyData(onData);
-      window.api.offPtyExit(onExit);
+      window.api.offPtyData(sessionId, onData);
+      window.api.offPtyExit(sessionId, onExit);
     };
-    window.api.onPtyData(onData);
-    window.api.onPtyExit(onExit);
+    window.api.onPtyData(sessionId, onData);
+    window.api.onPtyExit(sessionId, onExit);
   });
 }
 
@@ -107,6 +107,7 @@ function App() {
   }, [createTab]);
 
   useEffect(() => {
+    if (!activeId) return;
     const handleExit = (payload: {
       sessionId: string;
       exitCode: number;
@@ -123,8 +124,8 @@ function App() {
         return next;
       });
     };
-    window.api.onPtyExit(handleExit);
-    return () => window.api.offPtyExit(handleExit);
+    window.api.onPtyExit(activeId, handleExit);
+    return () => window.api.offPtyExit(activeId, handleExit);
   }, [activeId]);
 
   const pendingTab = useRef<Promise<Session> | null>(null);

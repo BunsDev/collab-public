@@ -529,8 +529,15 @@ export async function resizeSession(
 ): Promise<void> {
   const backend = sessionBackend(sessionId);
   if (backend === "sidecar") {
-    const client = getSidecarClient();
-    await client.resizeSession(sessionId, cols, rows);
+    try {
+      await ensureSidecar();
+      const client = getSidecarClient();
+      await client.resizeSession(sessionId, cols, rows);
+    } catch {
+      // Restored renderer tabs can emit an initial resize before the
+      // sidecar client is connected, or after the session is already gone.
+      // Treat that startup race as non-fatal.
+    }
     return;
   }
 

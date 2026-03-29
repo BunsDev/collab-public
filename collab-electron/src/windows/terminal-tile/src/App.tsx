@@ -119,8 +119,8 @@ function App() {
         setExited(true);
       }
     };
-    window.api.onPtyExit(handleExit);
-    return () => window.api.offPtyExit(handleExit);
+    window.api.onPtyExit(sessionId, handleExit);
+    return () => window.api.offPtyExit(sessionId, handleExit);
   }, [sessionId]);
 
   if (exited) {
