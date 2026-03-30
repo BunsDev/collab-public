@@ -19,7 +19,7 @@
 		"release": "bun ./scripts/package.mjs --publish",
 		"test": "bun test",
 		"test:updater": "bun test src/main/updater/github-release-fetcher.test.ts && bun test src/main/updater/downloader.test.ts && bun test src/main/updater/update-manager.test.ts",
-		"postinstall": "electron-rebuild -f -w node-pty"
+		"postinstall": "node scripts/postinstall.mjs"
 	},
 	"build": {
 		"appId": "com.collaborator.desktop",
