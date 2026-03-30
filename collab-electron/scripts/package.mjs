@@ -28,9 +28,9 @@ if (!env.NODE_OPTIONS?.includes("--max-old-space-size")) {
 
 const shouldPublish = args.includes("--publish");
 
-if (shouldPublish && process.platform !== "darwin") {
-  builderArgs.splice(0, builderArgs.length, "--publish", "always");
-}
+// Never use electron-builder's publisher — it fails when the release type
+// (draft vs pre-release) doesn't match.  We upload via upload-to-github.cjs
+// on all platforms instead.
 
 if (args.includes("--no-sign")) {
   env.CSC_IDENTITY_AUTO_DISCOVERY = "false";
@@ -145,9 +145,9 @@ for (const arch of targetArchitectures()) {
   run(electronBuilder, [...builderArgs, `--${arch}`]);
 }
 
-// On macOS, use upload-to-github.cjs instead of electron-builder's publisher
-// to avoid type-mismatch errors when the release already exists (e.g. created
-// by the Windows build as a pre-release).
-if (shouldPublish && process.platform === "darwin") {
+// Use upload-to-github.cjs instead of electron-builder's publisher to avoid
+// type-mismatch errors when the release already exists (e.g. one platform
+// created it as a pre-release and another tries to publish as draft).
+if (shouldPublish) {
   run("node", [join(cwd, "scripts", "upload-to-github.cjs")]);
 }

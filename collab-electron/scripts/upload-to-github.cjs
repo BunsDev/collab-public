@@ -34,18 +34,27 @@ if (!token) {
 }
 
 const distDir = path.join(__dirname, "..", pkg.build.directories.output);
-const zipName = `${product}-${version}-arm64-mac.zip`;
-const zipPath = path.join(distDir, zipName);
 
 function sha512Base64(filePath) {
   const buf = fs.readFileSync(filePath);
   return crypto.createHash("sha512").update(buf).digest("base64");
 }
 
+function resolveArtifact(label, artifactPath, optional) {
+  const resolved = path.resolve(artifactPath);
+  if (!fs.existsSync(resolved)) {
+    if (optional) return null;
+    throw new Error(`${label} not found: ${resolved}`);
+  }
+  return resolved;
+}
+
 // Regenerate latest-mac.yml from the actual zip on disk.
 // electron-builder's PublishManager.awaitTasks() may overwrite the yml
 // after the build, so regenerate it from the actual zip on disk.
-function regenerateYml() {
+function regenerateMacYml() {
+  const zipName = `${product}-${version}-arm64-mac.zip`;
+  const zipPath = path.join(distDir, zipName);
   const ymlPath = path.join(distDir, "latest-mac.yml");
   const zipStats = fs.statSync(zipPath);
   const zipHash = sha512Base64(zipPath);
@@ -71,39 +80,44 @@ function regenerateYml() {
 
   fs.writeFileSync(ymlPath, yml);
   console.log(`Regenerated latest-mac.yml (sha512: ${zipHash.slice(0, 16)}...)`);
-  return ymlPath;
+
+  const list = [
+    { label: "ZIP", path: resolveArtifact("ZIP", zipPath) },
+    { label: "latest-mac.yml", path: ymlPath },
+  ];
+  const bm = resolveArtifact("Blockmap", zipPath + ".blockmap", true);
+  if (bm) {
+    list.push({ label: "Blockmap", path: bm });
+  } else {
+    console.warn("No blockmap found -- delta updates disabled");
+  }
+  return list;
 }
 
-function resolveArtifact(label, artifactPath, optional) {
-  const resolved = path.resolve(artifactPath);
-  if (!fs.existsSync(resolved)) {
-    if (optional) return null;
-    throw new Error(`${label} not found: ${resolved}`);
-  }
-  return resolved;
+function collectWindowsArtifacts() {
+  // Disk filename has spaces; electron-builder publishes with hyphens.
+  // latest.yml references the hyphenated name, so uploads must match.
+  const diskName = `${product} Setup ${version}.exe`;
+  const uploadName = `${product}-Setup-${version}.exe`;
+  const exePath = path.join(distDir, diskName);
+  const list = [
+    { label: "Installer", path: resolveArtifact("Installer", exePath), uploadName },
+  ];
+  const bm = resolveArtifact("Blockmap", exePath + ".blockmap", true);
+  if (bm) list.push({ label: "Blockmap", path: bm, uploadName: uploadName + ".blockmap" });
+  const yml = resolveArtifact("latest.yml", path.join(distDir, "latest.yml"), true);
+  if (yml) list.push({ label: "latest.yml", path: yml });
+  const sums = resolveArtifact("SHA256SUMS", path.join(distDir, "SHA256SUMS.txt"), true);
+  if (sums) list.push({ label: "SHA256SUMS", path: sums });
+  return list;
 }
 
 const artifacts = (() => {
   try {
-    const ymlPath = regenerateYml();
-
-    const list = [
-      { label: "ZIP", path: resolveArtifact("ZIP", zipPath) },
-      { label: "latest-mac.yml", path: ymlPath },
-    ];
-
-    const bm = resolveArtifact(
-      "Blockmap",
-      zipPath + ".blockmap",
-      true,
-    );
-    if (bm) {
-      list.push({ label: "Blockmap", path: bm });
-    } else {
-      console.warn("No blockmap found -- delta updates disabled");
+    if (process.platform === "darwin") {
+      return regenerateMacYml();
     }
-
-    return list;
+    return collectWindowsArtifacts();
   } catch (err) {
     console.error(err.message);
     process.exit(1);
@@ -112,8 +126,8 @@ const artifacts = (() => {
 
 const octokit = new Octokit({ auth: token });
 
-async function uploadAsset(release, assetPath) {
-  const fileName = path.basename(assetPath);
+async function uploadAsset(release, assetPath, uploadName) {
+  const fileName = uploadName || path.basename(assetPath);
   const existing = release.assets.find((a) => a.name === fileName);
 
   if (existing) {
@@ -190,7 +204,7 @@ async function main() {
   }
 
   for (const artifact of artifacts) {
-    await uploadAsset(release, artifact.path);
+    await uploadAsset(release, artifact.path, artifact.uploadName);
   }
 
   if (!wasDraft) {
