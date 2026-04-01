@@ -1,4 +1,4 @@
-import log from "electron-log/main";
+import log from "electron-log/main.js";
 import { join } from "node:path";
 import { COLLAB_DIR } from "./paths";
 
