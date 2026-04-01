@@ -236,7 +236,7 @@ async function spawnSidecar(): Promise<void> {
     },
   );
   child.stderr?.on("data", (chunk: Buffer) => {
-    process.stderr.write(`[sidecar] ${chunk.toString()}`);
+    console.error(`[sidecar] ${chunk.toString().trimEnd()}`);
   });
   child.on("exit", (code: number | null) => {
     if (code !== 0 && code !== null) {
