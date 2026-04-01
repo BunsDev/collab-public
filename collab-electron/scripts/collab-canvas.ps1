@@ -52,7 +52,7 @@ if ($Socket.StartsWith("\\.\pipe\")) {
   $writer.Dispose()
   $client.Dispose()
 } else {
-  throw "Unix socket endpoints are not supported by collab.ps1"
+  throw "Unix socket endpoints are not supported by collab-canvas.ps1"
 }
 
 if (-not $responseLine) {

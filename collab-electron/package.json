@@ -65,16 +65,16 @@
 				"to": "terminfo"
 			},
 			{
-				"from": "scripts/collab-cli.sh",
-				"to": "collab-cli.sh"
+				"from": "scripts/collab-canvas-cli.sh",
+				"to": "collab-canvas-cli.sh"
 			},
 			{
-				"from": "scripts/collab.cmd",
-				"to": "collab.cmd"
+				"from": "scripts/collab-canvas.cmd",
+				"to": "collab-canvas.cmd"
 			},
 			{
-				"from": "scripts/collab.ps1",
-				"to": "collab.ps1"
+				"from": "scripts/collab-canvas.ps1",
+				"to": "collab-canvas.ps1"
 			}
 		],
 		"mac": {

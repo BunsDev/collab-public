@@ -6,14 +6,14 @@ SOCKET_FILE="${HOME}/.collaborator/socket-path"
 usage() {
   cat <<'EOF'
 Usage:
-  collab [method] [params-json]
-  collab --socket <path> [method] [params-json]
+  collab-canvas [method] [params-json]
+  collab-canvas --socket <path> [method] [params-json]
 
 Examples:
-  collab ping
-  collab rpc.discover
-  collab workspace.getConfig
-  collab app.notify '{"body":"Build finished"}'
+  collab-canvas ping
+  collab-canvas rpc.discover
+  collab-canvas workspace.getConfig
+  collab-canvas app.notify '{"body":"Build finished"}'
 EOF
 }
 
@@ -48,7 +48,7 @@ if command -v python3 >/dev/null 2>&1; then
 elif command -v python >/dev/null 2>&1; then
   PYTHON_BIN="python"
 else
-  echo "Python is required to use the collab CLI on Unix." >&2
+  echo "Python is required to use the collab-canvas CLI on Unix." >&2
   exit 1
 fi
 
@@ -62,7 +62,7 @@ method = sys.argv[2]
 params_raw = sys.argv[3] if len(sys.argv) > 3 else ""
 
 if socket_path.startswith("\\\\.\\pipe\\"):
-    raise SystemExit("Named pipe endpoints are only supported by collab.cmd / PowerShell.")
+    raise SystemExit("Named pipe endpoints are only supported by collab-canvas.cmd / PowerShell.")
 
 params = None
 if params_raw:
