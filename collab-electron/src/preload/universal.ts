@@ -8,7 +8,7 @@ import type { ReplayMessage } from "@collab/shared/replay-types";
 // -- PTY listener sets (terminal) ------------------------------------
 
 type PtyDataCallback = (
-  payload: { sessionId: string; data: Uint8Array },
+  payload: { sessionId: string; data: string | Uint8Array },
 ) => void;
 type PtyExitCallback = (
   payload: { sessionId: string; exitCode: number },
@@ -22,7 +22,7 @@ type RunInTerminalCb = (command: string) => void;
 const MAX_BUFFERED_PTY_EVENTS = 32;
 const bufferedPtyData = new Map<
   string,
-  Array<{ sessionId: string; data: Uint8Array }>
+  Array<{ sessionId: string; data: string | Uint8Array }>
 >();
 const bufferedPtyExit = new Map<
   string,
@@ -269,10 +269,12 @@ contextBridge.exposeInMainWorld("api", {
       "pty:create",
       { cwd, cols, rows, target, tileId },
     ),
-  ptyWrite: (sessionId: string, data: string) =>
-    ipcRenderer.invoke("pty:write", { sessionId, data }),
-  ptySendRawKeys: (sessionId: string, data: string) =>
-    ipcRenderer.invoke("pty:send-raw-keys", { sessionId, data }),
+  ptyWrite: (sessionId: string, data: string) => {
+    ipcRenderer.send("pty:write", { sessionId, data });
+  },
+  ptySendRawKeys: (sessionId: string, data: string) => {
+    ipcRenderer.send("pty:send-raw-keys", { sessionId, data });
+  },
   ptyResize: (
     sessionId: string,
     cols: number,

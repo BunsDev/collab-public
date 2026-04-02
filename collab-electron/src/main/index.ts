@@ -39,6 +39,7 @@ import * as gitReplay from "./git-replay";
 import { DISABLE_GIT_REPLAY } from "@collab/shared/replay-types";
 import * as pty from "./pty";
 import { updateManager, setupUpdateIPC } from "./updater";
+import { DEV_WORKTREE_ID } from "./paths";
 import {
   initMainAnalytics,
   trackEvent,
@@ -77,7 +78,10 @@ process.on("unhandledRejection", (reason) => {
 });
 
 if (import.meta.env.DEV) {
-  app.setPath("userData", join(app.getPath("userData"), "dev"));
+  app.setPath(
+    "userData",
+    join(app.getPath("userData"), "dev", DEV_WORKTREE_ID ?? "worktree-unknown"),
+  );
 }
 
 let mainWindow: BrowserWindow | null = null;
@@ -575,16 +579,44 @@ ipcMain.handle(
     ),
 );
 
+function handlePtyWrite(
+  sessionId: string,
+  data: string,
+): void {
+  pty.writeToSession(sessionId, data);
+}
+
 ipcMain.handle(
   "pty:write",
   (_event, { sessionId, data }: { sessionId: string; data: string }) =>
-    pty.writeToSession(sessionId, data),
+    handlePtyWrite(sessionId, data),
 );
+
+ipcMain.on(
+  "pty:write",
+  (_event, { sessionId, data }: { sessionId: string; data: string }) => {
+    handlePtyWrite(sessionId, data);
+  },
+);
+
+function handlePtySendRawKeys(
+  sessionId: string,
+  data: string,
+): void {
+  pty.sendRawKeys(sessionId, data);
+}
 
 ipcMain.handle(
   "pty:send-raw-keys",
   (_event, { sessionId, data }: { sessionId: string; data: string }) =>
-    pty.sendRawKeys(sessionId, data),
+    handlePtySendRawKeys(sessionId, data),
+);
+
+ipcMain.on(
+  "pty:send-raw-keys",
+  (_event, { sessionId, data }: { sessionId: string; data: string }) => {
+    handlePtySendRawKeys(sessionId, data);
+  },
 );
 
 ipcMain.handle(

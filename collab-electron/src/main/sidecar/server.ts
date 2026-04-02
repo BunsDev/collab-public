@@ -35,6 +35,7 @@ interface ServerOptions {
 interface Session {
   id: string;
   pty: pty.IPty;
+  terminateProcess: () => void;
   shell: string;
   displayName: string;
   target: string;
@@ -48,7 +49,10 @@ interface Session {
   socketPath: string;
   hasAttachedClient: boolean;
   /** When non-null, PTY output is queued here instead of sent to client. */
-  reconnectQueue: Buffer[] | null;
+  reconnectQueue: Array<string | Buffer> | null;
+  exited: boolean;
+  terminating: boolean;
+  cleanupTimer: ReturnType<typeof setTimeout> | null;
 }
 
 export class SidecarServer {
@@ -77,6 +81,80 @@ export class SidecarServer {
       }
     }
     return base;
+  }
+
+  private chunkToBuffer(data: string | Uint8Array): Buffer {
+    return typeof data === "string"
+      ? Buffer.from(data, "utf8")
+      : Buffer.from(data);
+  }
+
+  private windowsPathKey(env: Record<string, string>): string | null {
+    return Object.keys(env).find((key) => key.toLowerCase() === "path")
+      ?? null;
+  }
+
+  private normalizeWindowsPathEntry(value: string): string {
+    let normalized = value.trim().replace(/\//g, "\\");
+    if (normalized.startsWith("\\\\?\\")) {
+      normalized = normalized.slice(4);
+    } else if (normalized.startsWith("\\??\\")) {
+      normalized = normalized.slice(4);
+    }
+    return normalized;
+  }
+
+  private isMalformedNodeModulesBinEntry(value: string): boolean {
+    const normalized = this.normalizeWindowsPathEntry(value);
+    return /^(?:\.\\|\\+)?node_modules\\\.bin\\?$/i.test(normalized);
+  }
+
+  private sanitizeWindowsWslEnv(env: Record<string, string>): void {
+    const pathKey = this.windowsPathKey(env);
+    if (!pathKey) return;
+
+    const filtered = env[pathKey]
+      .split(";")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .filter((entry) => !this.isMalformedNodeModulesBinEntry(entry));
+
+    env[pathKey] = filtered.join(";");
+    if (pathKey !== "PATH" && env.PATH == null) {
+      env.PATH = env[pathKey];
+    }
+  }
+
+  private killWindowsProcessTree(
+    pid: number,
+    fallback: () => void,
+  ): void {
+    try {
+      const { execFileSync } = require("node:child_process");
+      execFileSync(
+        "taskkill.exe",
+        ["/PID", String(pid), "/T", "/F"],
+        { windowsHide: true, stdio: "ignore", timeout: 2000 },
+      );
+    } catch {
+      fallback();
+    }
+  }
+
+  private createTerminateProcess(ptyProcess: pty.IPty): () => void {
+    const originalKill = ptyProcess.kill.bind(ptyProcess);
+    if (process.platform !== "win32") {
+      return () => originalKill();
+    }
+
+    ptyProcess.kill = ((signal?: string) => {
+      if (signal) {
+        throw new Error("Signals not supported on windows.");
+      }
+      this.killWindowsProcessTree(ptyProcess.pid, () => originalKill());
+    }) as typeof ptyProcess.kill;
+
+    return () => this.killWindowsProcessTree(ptyProcess.pid, () => originalKill());
   }
 
   async start(): Promise<void> {
@@ -228,6 +306,7 @@ export class SidecarServer {
     const sessionId = crypto.randomBytes(8).toString("hex");
     const socketPath = this.sessionSocketPath(sessionId);
 
+    const target = params.target || "shell";
     const env: Record<string, string> = {
       ...process.env as Record<string, string>,
       ...params.env,
@@ -242,12 +321,14 @@ export class SidecarServer {
     if (!env.LANG || !env.LANG.includes("UTF-8")) {
       env.LANG = "en_US.UTF-8";
     }
+    if (process.platform === "win32" && target.startsWith("wsl:")) {
+      this.sanitizeWindowsWslEnv(env);
+    }
 
     // Backward compat: old clients send `shell` instead of `command`/`args`.
     const command = params.command || params.shell || "/bin/sh";
     const args = params.args || [];
     const displayName = params.displayName || displayCommandName(command);
-    const target = params.target || "shell";
     const cwdHostPath = params.cwdHostPath || params.cwd;
 
     let ptyProcess: pty.IPty;
@@ -258,7 +339,7 @@ export class SidecarServer {
         rows: params.rows,
         cwd: params.cwd,
         env,
-        encoding: null,
+        ...(process.platform === "win32" ? {} : { encoding: null }),
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -271,9 +352,11 @@ export class SidecarServer {
     }
 
     const ringBuffer = new RingBuffer(this.opts.ringBufferBytes);
+    const terminateProcess = this.createTerminateProcess(ptyProcess);
     const session = this.withOptional({
       id: sessionId,
       pty: ptyProcess,
+      terminateProcess,
       shell: command,
       displayName,
       target,
@@ -287,13 +370,16 @@ export class SidecarServer {
       socketPath,
       hasAttachedClient: false,
       reconnectQueue: null,
+      exited: false,
+      terminating: false,
+      cleanupTimer: null,
     }, {
       cwdGuestPath: params.cwdGuestPath,
     }) as Session;
 
     // Listen for PTY output
-    ptyProcess.onData((data: Buffer) => {
-      ringBuffer.write(data);
+    ptyProcess.onData((data: string | Buffer) => {
+      ringBuffer.write(this.chunkToBuffer(data));
 
       if (session.reconnectQueue) {
         session.reconnectQueue.push(data);
@@ -306,6 +392,7 @@ export class SidecarServer {
     });
 
     ptyProcess.onExit(({ exitCode }) => {
+      session.exited = true;
       // Notify all control clients
       const notification = makeNotification("session.exited", {
         sessionId,
@@ -320,6 +407,8 @@ export class SidecarServer {
     // Create per-session data socket server
     prepareEndpoint(socketPath);
     const dataServer = net.createServer((client) => {
+      client.setEncoding("utf8");
+
       // Last-attach-wins: close previous client
       if (session.dataClient && !session.dataClient.destroyed) {
         session.dataClient.destroy();
@@ -346,7 +435,7 @@ export class SidecarServer {
 
       // Pipe client input to PTY
       client.on("data", (data) => {
-        ptyProcess.write(data.toString());
+        ptyProcess.write(data);
       });
 
       client.on("close", () => {
@@ -507,20 +596,36 @@ export class SidecarServer {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
-    session.pty.kill();
+    if (session.exited) {
+      this.cleanupSession(sessionId);
+      return;
+    }
+
+    if (session.terminating) return;
+    session.terminating = true;
+
     if (session.dataClient && !session.dataClient.destroyed) {
       session.dataClient.destroy();
     }
-    session.dataServer.close();
-    cleanupEndpoint(session.socketPath);
-    this.sessions.delete(sessionId);
-    this.resetIdleTimer();
+
+    this.terminateSessionProcess(session);
+    session.cleanupTimer = setTimeout(() => {
+      this.cleanupSession(sessionId);
+    }, 2000);
+  }
+
+  private terminateSessionProcess(session: Session): void {
+    session.terminateProcess();
   }
 
   private cleanupSession(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    if (session.cleanupTimer) {
+      clearTimeout(session.cleanupTimer);
+      session.cleanupTimer = null;
+    }
     if (session.dataClient && !session.dataClient.destroyed) {
       session.dataClient.destroy();
     }

@@ -81,7 +81,7 @@ interface TerminalTargetOption {
 }
 
 type PtyDataCb = (
-  payload: { sessionId: string; data: Uint8Array },
+  payload: { sessionId: string; data: string | Uint8Array },
 ) => void;
 type PtyExitCb = (
   payload: { sessionId: string; exitCode: number },
@@ -225,11 +225,11 @@ export interface CollabApi {
   ptyWrite: (
     sessionId: string,
     data: string,
-  ) => Promise<void>;
+  ) => void;
   ptySendRawKeys: (
     sessionId: string,
     data: string,
-  ) => Promise<void>;
+  ) => void;
   ptyResize: (
     sessionId: string,
     cols: number,

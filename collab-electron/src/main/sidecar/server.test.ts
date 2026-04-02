@@ -41,7 +41,7 @@ const TEST_SHELL = process.platform === "win32"
     displayName: "PowerShell",
     target: "powershell",
     echo: (marker: string) => `Write-Output '${marker}'\n`,
-    exit: "exit\n",
+    exit: "exit\r",
   }
   : {
     command: "/bin/sh",
@@ -519,6 +519,7 @@ describe("Shell exit sends session.exited notification", () => {
 
     // Connect data socket and send exit to terminate the shell
     const data = await connectDataSocket(socketPath);
+    await sleep(500);
     data.write(TEST_SHELL.exit);
 
     // Wait for the notification to arrive

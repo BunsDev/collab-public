@@ -606,7 +606,6 @@ export function sendRawKeys(
   sessionId: string,
   data: string,
 ): void {
-  const meta = readSessionMeta(sessionId);
   if (sessionBackend(sessionId) !== "tmux") {
     writeToSession(sessionId, data);
     return;
@@ -898,6 +897,8 @@ export async function getForegroundProcess(
 const lastForeground = new Map<string, string>();
 const statusTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const STATUS_DEBOUNCE_MS = 500;
+const lastForegroundCheckAt = new Map<string, number>();
+const WINDOWS_SIDECAR_FOREGROUND_MIN_INTERVAL_MS = 2000;
 
 function sendToMainWindow(channel: string, payload: unknown): void {
   const { BrowserWindow } = require("electron");
@@ -917,6 +918,19 @@ export function scheduleForegroundCheck(sessionId: string): void {
     sessionId,
     setTimeout(() => {
       statusTimers.delete(sessionId);
+      if (
+        process.platform === "win32"
+        && sessionBackend(sessionId) === "sidecar"
+      ) {
+        const now = Date.now();
+        const lastCheckAt = lastForegroundCheckAt.get(sessionId) ?? 0;
+        if (
+          now - lastCheckAt < WINDOWS_SIDECAR_FOREGROUND_MIN_INTERVAL_MS
+        ) {
+          return;
+        }
+        lastForegroundCheckAt.set(sessionId, now);
+      }
       getForegroundProcess(sessionId).then((fg) => {
         if (fg == null) return;
 
@@ -935,6 +949,7 @@ export function scheduleForegroundCheck(sessionId: string): void {
 
 export function clearForegroundCache(sessionId: string): void {
   lastForeground.delete(sessionId);
+  lastForegroundCheckAt.delete(sessionId);
   const timer = statusTimers.get(sessionId);
   if (timer) {
     clearTimeout(timer);

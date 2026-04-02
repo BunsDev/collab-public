@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { COLLAB_DIR } from "../paths";
 import { makeEndpointPath } from "../ipc-endpoint";
 
-export const SIDECAR_VERSION = 1;
+export const SIDECAR_VERSION = 3;
 
 export const SIDECAR_SOCKET_PATH = makeEndpointPath("pty-sidecar");
 export const SIDECAR_PID_PATH = join(COLLAB_DIR, "pty-sidecar.pid");

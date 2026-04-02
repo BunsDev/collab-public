@@ -29,12 +29,13 @@ function buildCdCommand(path: string, target: string): string {
 }
 
 const IS_MAC = window.api.getPlatform() === "darwin";
+type PtyDataChunk = string | Uint8Array;
 
 function waitForSessionReady(sessionId: string): Promise<boolean> {
   return new Promise((resolve) => {
     const onData = (p: {
       sessionId: string;
-      data: Uint8Array;
+      data: PtyDataChunk;
     }) => {
       if (p.sessionId === sessionId) {
         cleanup();
