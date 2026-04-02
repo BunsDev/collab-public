@@ -7,6 +7,7 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -20,8 +21,6 @@ const INSTALL_DIR = IS_WIN
   : join(homedir(), ".local", "bin");
 const WRAPPER_PATH = join(INSTALL_DIR, IS_WIN ? "collab-canvas.cmd" : "collab-canvas");
 const MJS_PATH = join(INSTALL_DIR, "collab-cli.mjs");
-const COLLAB_DIR = join(homedir(), ".collaborator");
-const HINT_MARKER = join(COLLAB_DIR, "cli-path-hinted");
 
 function getMjsSource(): string {
   if (app.isPackaged) {
@@ -64,7 +63,7 @@ export function installCli(): void {
   }
 
   const legacyNames = IS_WIN
-    ? ["collab.cmd", "collab.ps1"]
+    ? ["collab.cmd", "collab.ps1", "collab-canvas.ps1"]
     : ["collab"];
   for (const name of legacyNames) {
     const legacy = join(INSTALL_DIR, name);
@@ -84,19 +83,55 @@ export function installCli(): void {
     chmodSync(WRAPPER_PATH, 0o755);
   }
 
-  if (!existsSync(HINT_MARKER)) {
-    const pathEnv = process.env["PATH"] ?? "";
-    const separator = IS_WIN ? ";" : ":";
-    if (!pathEnv.split(separator).includes(INSTALL_DIR)) {
-      const hint = IS_WIN
-        ? `[cli-installer] collab-canvas installed to ${WRAPPER_PATH}. ` +
-          `Add ${INSTALL_DIR} to your PATH to use it from any terminal.`
-        : `[cli-installer] collab-canvas installed to ${WRAPPER_PATH}. ` +
-          `Add ~/.local/bin to your PATH to use it from any terminal:\n` +
-          `  export PATH="$HOME/.local/bin:$PATH"`;
-      console.log(hint);
-      mkdirSync(COLLAB_DIR, { recursive: true });
-      writeFileSync(HINT_MARKER, "", "utf-8");
-    }
+  if (IS_WIN) {
+    addToWindowsPath(INSTALL_DIR);
+  }
+}
+
+/**
+ * Add a directory to the user-level PATH on Windows via the registry.
+ * Broadcasts WM_SETTINGCHANGE so already-open shells pick up the change.
+ */
+function addToWindowsPath(dir: string): void {
+  let currentPath = "";
+  try {
+    const output = execSync('reg query "HKCU\\Environment" /v Path', {
+      encoding: "utf-8",
+    });
+    const match = output.match(/Path\s+REG_(?:EXPAND_)?SZ\s+(.*)/i);
+    if (match) currentPath = match[1].trim();
+  } catch {
+    // Key doesn't exist yet — first time setup
+  }
+
+  const entries = currentPath.split(";").filter(Boolean);
+  if (entries.some((e) => e.toLowerCase() === dir.toLowerCase())) return;
+
+  const newPath = currentPath ? `${currentPath};${dir}` : dir;
+  execSync(
+    `reg add "HKCU\\Environment" /v Path /t REG_EXPAND_SZ /d "${newPath}" /f`,
+    { encoding: "utf-8" },
+  );
+
+  // Broadcast WM_SETTINGCHANGE so open Explorer/shell windows see the update
+  const ps1 = `
+Add-Type -Namespace Win32 -Name NativeMethods -MemberDefinition @'
+[DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+public static extern IntPtr SendMessageTimeout(
+    IntPtr hWnd, uint Msg, UIntPtr wParam, string lParam,
+    uint fuFlags, uint uTimeout, out UIntPtr lpdwResult);
+'@
+$r = [UIntPtr]::Zero
+[Win32.NativeMethods]::SendMessageTimeout(
+    [IntPtr]0xffff, 0x1a, [UIntPtr]::Zero, 'Environment', 2, 5000, [ref]$r)
+`;
+  const encoded = Buffer.from(ps1, "utf16le").toString("base64");
+  try {
+    execSync(
+      `powershell -NoProfile -NonInteractive -EncodedCommand ${encoded}`,
+      { encoding: "utf-8", timeout: 10000 },
+    );
+  } catch {
+    // Non-critical: new terminals will still pick up the change from the registry
   }
 }
