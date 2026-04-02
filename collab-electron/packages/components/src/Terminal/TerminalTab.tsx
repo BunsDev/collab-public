@@ -221,8 +221,13 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 		const handlePaste = (event: ClipboardEvent) => {
 			if (suppressPasteEvent) {
 				suppressPasteEvent = false;
-				event.preventDefault();
-				event.stopImmediatePropagation();
+				// Only suppress if clipboard has text (already sent via
+				// pasteClipboardText). If it only has images, let the
+				// event propagate so downstream handlers can process it.
+				if (event.clipboardData?.getData("text/plain")) {
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				}
 				return;
 			}
 			const text = event.clipboardData?.getData("text/plain");
