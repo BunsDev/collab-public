@@ -184,6 +184,15 @@ export function registerFilesystemHandlers(
     };
   });
 
+  ipcMain.handle("fs:is-directory", async (_event, filePath: string) => {
+    try {
+      const s = await stat(filePath);
+      return s.isDirectory();
+    } catch {
+      return false;
+    }
+  });
+
   ipcMain.handle("fs:trash", async (_event, path: string) => {
     await shell.trashItem(path);
     ctx.trackEvent("file_trashed");

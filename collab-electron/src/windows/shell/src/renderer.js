@@ -684,7 +684,7 @@ async function init() {
 	// -- Space+click and middle-click pan --
 
 	window.addEventListener("keydown", (e) => {
-		if (e.code === "Space" && !e.target.closest?.("webview")) {
+		if (e.code === "Space" && !e.target.closest?.("webview") && !e.target.matches?.("input, textarea")) {
 			e.preventDefault();
 			if (!e.repeat && !spaceHeld) {
 				spaceHeld = true;
@@ -1238,25 +1238,46 @@ async function init() {
 		const cy =
 			(screenY - viewportState.panY) / viewportState.zoom;
 
+		// Extract Finder file paths synchronously — native file
+		// handles on DataTransfer are invalidated after the first
+		// await, so getPathForFile must run before getDragPaths.
+		const finderPaths = [];
+		if (e.dataTransfer?.files) {
+			for (let i = 0; i < e.dataTransfer.files.length; i++) {
+				let p = "";
+				try {
+					p = window.shellApi.getPathForFile(
+						e.dataTransfer.files[i],
+					);
+				} catch { /* skip non-file items */ }
+				if (p) finderPaths.push(p);
+			}
+		}
+
 		let paths = [];
 		if (window.shellApi.getDragPaths) {
 			try {
 				paths = await window.shellApi.getDragPaths();
 			} catch { /* noop */ }
 		}
-		if (paths.length === 0 && e.dataTransfer?.files) {
-			for (let i = 0; i < e.dataTransfer.files.length; i++) {
-				const p = e.dataTransfer.files[i].path;
-				if (p) paths.push(p);
-			}
+		if (paths.length === 0) {
+			paths = finderPaths;
 		}
 		if (paths.length === 0) return;
 
 		const viewerRect = panelViewer.getBoundingClientRect();
 		if (e.clientX < viewerRect.left) return;
 
-		for (let i = 0; i < paths.length; i++) {
-			const filePath = paths[i];
+		// Filter out directories in parallel (folder drops not supported)
+		const checks = paths.map(async (p) => {
+			const isDir = await window.shellApi.isDirectory(p);
+			return isDir ? null : p;
+		});
+		const filePaths = (await Promise.all(checks)).filter(Boolean);
+		if (filePaths.length === 0) return;
+
+		for (let i = 0; i < filePaths.length; i++) {
+			const filePath = filePaths[i];
 			const type = inferTileType(filePath);
 			tileManager.createFileTile(
 				type, cx + i * 30, cy + i * 30, filePath,
