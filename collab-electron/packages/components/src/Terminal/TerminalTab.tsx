@@ -291,6 +291,7 @@ function TerminalTab({ sessionId, visible, restored, scrollbackData, mode }: Ter
 			try {
 				await window.api.ptyWrite(sessionId, escaped.join(" "));
 			} catch { /* PTY may have exited */ }
+			term.focus();
 		};
 
 		container.addEventListener("copy", handleCopy, true);

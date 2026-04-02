@@ -1288,6 +1288,7 @@ async function init() {
 					escaped.join(" "),
 				);
 			} catch { /* PTY may have exited */ }
+			tileManager.focusCanvasTile(targetTile.id);
 			return;
 		}
 
