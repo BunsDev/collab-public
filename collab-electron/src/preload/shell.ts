@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 
 interface ViewConfig {
   src: string;
@@ -153,6 +153,10 @@ contextBridge.exposeInMainWorld("shellApi", {
     ipcRenderer.invoke("canvas:save-state", state),
 
   getDragPaths: () => ipcRenderer.invoke("drag:get-paths"),
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+
+  isDirectory: (filePath: string): Promise<boolean> =>
+    ipcRenderer.invoke("fs:is-directory", filePath),
 
   getWorkspacePath: (): Promise<string> =>
     ipcRenderer.invoke("shell:get-workspace-path"),
