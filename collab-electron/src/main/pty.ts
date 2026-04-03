@@ -107,6 +107,12 @@ function utf8Env(): Record<string, string> {
   // so CLI tools (e.g. Claude Code) render with full true color
   // instead of falling back to 256-color palettes.
   env.COLORTERM = "truecolor";
+  // supports-color (used by chalk/Ink) checks FORCE_COLOR before all
+  // other heuristics.  Without this, env vars inherited from the
+  // developer's shell (CI, TERM_PROGRAM, etc.) can cause
+  // supports-color to short-circuit and return a lower color level
+  // before it ever reaches the COLORTERM check.
+  env.FORCE_COLOR = "3";
   const terminfoDir = getTerminfoDir();
   if (terminfoDir) {
     env.TERMINFO = terminfoDir;
