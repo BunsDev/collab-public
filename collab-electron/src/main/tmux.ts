@@ -1,7 +1,7 @@
 import { execFileSync, execFile } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { COLLAB_DIR } from "./paths";
+import { COLLAB_DIR, DEV_WORKTREE_ID } from "./paths";
 
 export interface SessionMeta {
   shell: string;
@@ -21,7 +21,11 @@ export const SESSION_DIR = path.join(
 );
 function getSocketName(): string {
   const app = getApp();
-  if (app && !app.isPackaged) return "collab-dev";
+  if (app && !app.isPackaged) {
+    return DEV_WORKTREE_ID
+      ? `collab-dev-${DEV_WORKTREE_ID}`
+      : "collab-dev";
+  }
   return "collab";
 }
 

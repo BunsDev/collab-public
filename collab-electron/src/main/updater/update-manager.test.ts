@@ -194,8 +194,27 @@ describe("UpdateManager", () => {
       "error",
       new Error("Cannot find latest-linux.yml in the latest release artifacts"),
     );
-    expect(getState().status).toBe("idle");
-    expect(getState().error).toBeUndefined();
+    if (process.platform === "linux") {
+      expect(getState().status).toBe("idle");
+      expect(getState().error).toBeUndefined();
+    } else {
+      expect(getState().status).toBe("error");
+      expect(getState().error).toBe(
+        "Cannot find latest-linux.yml in the latest release artifacts",
+      );
+    }
+  });
+
+  test("does not ignore non-linux release metadata errors", async () => {
+    await updateManager.checkForUpdates();
+    fireEvent(
+      "error",
+      new Error("Cannot find latest-win.yml in the latest release artifacts"),
+    );
+    expect(getState().status).toBe("error");
+    expect(getState().error).toBe(
+      "Cannot find latest-win.yml in the latest release artifacts",
+    );
   });
 
   test("install transitions to installing in dev mode", async () => {

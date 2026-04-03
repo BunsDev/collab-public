@@ -25,7 +25,10 @@ const CHECK_INTERVAL_MS = 60 * 60 * 1000;
 const INITIAL_CHECK_DELAY_MS = 5_000;
 
 function isMissingReleaseMetadataError(message: string): boolean {
-  return /Cannot find latest(?:-[^/\s]+)?\.yml in the latest release artifacts/i.test(
+  if (process.platform !== "linux") {
+    return false;
+  }
+  return /Cannot find latest-linux\.yml in the latest release artifacts/i.test(
     message,
   );
 }
@@ -36,6 +39,14 @@ class UpdateManager {
   private errorResetTimeout: NodeJS.Timeout | null = null;
   private checkInterval: NodeJS.Timeout | null = null;
   private onBeforeQuit: (() => Promise<void>) | null = null;
+
+  private shouldIgnoreMissingReleaseMetadataError(message: string): boolean {
+    if (!isMissingReleaseMetadataError(message)) {
+      return false;
+    }
+    this.setState({ status: "idle", error: undefined });
+    return true;
+  }
 
   init(opts?: { onBeforeQuit?: () => Promise<void> }): void {
     if (this.initialized) return;
@@ -108,8 +119,7 @@ class UpdateManager {
     });
 
     autoUpdater.on("error", (err) => {
-      if (isMissingReleaseMetadataError(err.message)) {
-        this.setState({ status: "idle", error: undefined });
+      if (this.shouldIgnoreMissingReleaseMetadataError(err.message)) {
         return;
       }
       trackEvent("update_download_failed", { error: err.message });
@@ -141,8 +151,7 @@ class UpdateManager {
       await autoUpdater.checkForUpdates();
     } catch (err) {
       const message = (err as Error).message;
-      if (isMissingReleaseMetadataError(message)) {
-        this.setState({ status: "idle", error: undefined });
+      if (this.shouldIgnoreMissingReleaseMetadataError(message)) {
         return;
       }
       this.handleError(message);

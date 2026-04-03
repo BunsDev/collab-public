@@ -41,10 +41,13 @@ Get-CimInstance Win32_Process -Filter "Name = 'electron.exe'" -ErrorAction Silen
     Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
   }
 
-Get-Process -Name electron-vite -ErrorAction SilentlyContinue |
-  Where-Object { $_.Path -like "$repoDir*" } |
+Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
+  Where-Object {
+    $_.CommandLine -like "*$electronViteScriptPath*" -and
+      $_.CommandLine -like "* dev*"
+  } |
   ForEach-Object {
-    Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue
+    Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
   }
 
 $env:COLLAB_DEV_WORKTREE_ROOT = $repoDir
