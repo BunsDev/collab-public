@@ -1327,16 +1327,6 @@ async function init() {
 		tileManager.restoreCanvasState(savedState.tiles);
 	}
 
-	// Kill tmux sessions that have no corresponding terminal tile
-	const activeSessionIds = [];
-	for (const [id] of tileManager.getTileDOMs()) {
-		const tile = getTile(id);
-		if (tile?.type === "term" && tile.ptySessionId) {
-			activeSessionIds.push(tile.ptySessionId);
-		}
-	}
-	window.shellApi.ptyCleanDetached?.(activeSessionIds);
-
 	// -- Initialize workspaces --
 
 	const { workspaces: wsPaths, active } = workspaceData;
