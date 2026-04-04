@@ -316,6 +316,36 @@ async function init() {
 	};
 	broadcastCanvasOpacity();
 
+	// -- Tile list sync --
+
+	let lastTileSnapshot = new Map();
+
+	function syncTileList() {
+		const currentIds = new Set();
+		for (const [id] of tileManager.getTileDOMs()) {
+			const tile = getTile(id);
+			if (!tile) continue;
+			currentIds.add(id);
+			const entry = buildTileListEntry(tile);
+			const prev = lastTileSnapshot.get(id);
+			if (!prev || prev.title !== entry.title ||
+				prev.description !== entry.description ||
+				prev.status !== entry.status) {
+				tileListWebview.send(
+					prev ? "tile-list:update" : "tile-list:add",
+					entry,
+				);
+			}
+			lastTileSnapshot.set(id, entry);
+		}
+		for (const id of lastTileSnapshot.keys()) {
+			if (!currentIds.has(id)) {
+				tileListWebview.send("tile-list:remove", id);
+				lastTileSnapshot.delete(id);
+			}
+		}
+	}
+
 	// -- Tile manager --
 
 	const tileManager = createTileManager({
@@ -326,11 +356,13 @@ async function init() {
 			window.shellApi.canvasSaveState(
 				toCenterPointState(state),
 			);
+			syncTileList();
 		},
 		onSaveImmediate(state) {
 			window.shellApi.canvasSaveState(
 				toCenterPointState(state),
 			);
+			syncTileList();
 		},
 		onNoteSurfaceFocus: noteSurfaceFocus,
 		onFocusSurface: focusSurface,
@@ -341,21 +373,10 @@ async function init() {
 				(entry) => entry.sessionId === tile.ptySessionId,
 			);
 			syncTerminalTileMeta(tile, session?.meta);
-			tileListWebview.send(
-				"tile-list:update", buildTileListEntry(tile),
-			);
+			syncTileList();
 		},
-		onTerminalTileClosed(sessionId) {
-			for (const [id] of tileManager.getTileDOMs()) {
-				const t = getTile(id);
-				if (
-					t?.type === "term" &&
-					t.ptySessionId === sessionId
-				) {
-					tileListWebview.send("tile-list:remove", id);
-					break;
-				}
-			}
+		onTerminalTileClosed() {
+			syncTileList();
 		},
 		onTileFocused(tile) {
 			tileListWebview.send(
@@ -985,11 +1006,14 @@ async function init() {
 
 	tileListWebview.webview.addEventListener(
 		"dom-ready", () => {
+			lastTileSnapshot = new Map();
 			const initEntries = [];
 			for (const [id] of tileManager.getTileDOMs()) {
 				const tile = getTile(id);
 				if (tile) {
-					initEntries.push(buildTileListEntry(tile));
+					const entry = buildTileListEntry(tile);
+					initEntries.push(entry);
+					lastTileSnapshot.set(id, entry);
 				}
 			}
 			tileListWebview.send("tile-list:init", initEntries);
