@@ -225,6 +225,8 @@ contextBridge.exposeInMainWorld("shellApi", {
   markPluginOffered: () =>
     ipcRenderer.invoke("integrations:mark-plugin-offered"),
 
+  getHomePath: (): string => ipcRenderer.sendSync("get-home-path"),
+
   ptyKillSession: (sessionId: string): Promise<void> =>
     ipcRenderer.invoke("pty:kill", { sessionId }),
 

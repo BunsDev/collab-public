@@ -514,6 +514,10 @@ ipcMain.on("analytics:track-event", (_event, name, properties) => {
   trackEvent(name, properties);
 });
 
+ipcMain.on("get-home-path", (event) => {
+  event.returnValue = app.getPath("home");
+});
+
 ipcMain.handle("shell:get-view-config", () => {
   const preload = pathToFileURL(
     getPreloadPath("universal"),
