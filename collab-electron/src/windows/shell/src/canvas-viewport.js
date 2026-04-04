@@ -197,5 +197,10 @@ export function createViewport(canvasEl, gridCanvas) {
 		},
 		updateCanvas,
 		applyZoom,
+		setPan(x, y) {
+			state.panX = x;
+			state.panY = y;
+			updateCanvas();
+		},
 	};
 }
