@@ -49,15 +49,42 @@ describe("getTileLabel", () => {
     expect(label.parent).toBe("/Users/me/projects/");
   });
 
-  test("returns display name for term tiles without cwd", () => {
-    const label = getTileLabel({
-      type: "term", id: "t1", displayName: "PowerShell",
-    });
-    expect(label.name).toBe("PowerShell");
+  test("returns 'Terminal' for term tiles without session info", () => {
+    const label = getTileLabel({ type: "term", id: "t1" });
+    expect(label.name).toBe("Terminal");
     expect(label.parent).toBe("");
   });
 
-  test("returns 'Terminal' for term tiles without session info", () => {
+  test("userTitle wins over autoTitle and cwd", () => {
+    const label = getTileLabel({
+      type: "term", id: "t1",
+      userTitle: "My Server",
+      autoTitle: "/Users/me/projects/app",
+      cwd: "/Users/me/projects/app",
+    });
+    expect(label.name).toBe("My Server");
+    expect(label.parent).toBe("");
+  });
+
+  test("returns autoTitle split when no userTitle", () => {
+    const label = getTileLabel({
+      type: "term", id: "t1",
+      autoTitle: "/Users/me/projects/app",
+    });
+    expect(label.name).toBe("app");
+    expect(label.parent).toBe("/Users/me/projects/");
+  });
+
+  test("falls back to cwd when no userTitle or autoTitle", () => {
+    const label = getTileLabel({
+      type: "term", id: "t1",
+      cwd: "/Users/me/projects/fallback",
+    });
+    expect(label.name).toBe("fallback");
+    expect(label.parent).toBe("/Users/me/projects/");
+  });
+
+  test("returns Terminal when no title fields set", () => {
     const label = getTileLabel({ type: "term", id: "t1" });
     expect(label.name).toBe("Terminal");
     expect(label.parent).toBe("");
