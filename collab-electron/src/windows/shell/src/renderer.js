@@ -494,6 +494,7 @@ async function init() {
 				(entry) => entry.sessionId === tile.ptySessionId,
 			);
 			syncTerminalTileMeta(tile, session?.meta);
+			tileManager.saveCanvasDebounced();
 			syncTileList();
 		},
 		onTerminalTileClosed() {
