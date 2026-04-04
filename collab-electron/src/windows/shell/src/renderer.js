@@ -803,10 +803,10 @@ async function init() {
 		}
 		if (action === "toggle-settings") {
 			window.shellApi.toggleSettings();
-		} else if (action === "toggle-files") {
-			panelManager.toggleFiles();
-		} else if (action === "toggle-tiles") {
-			panelManager.toggleTiles();
+		} else if (action === "toggle-agent") {
+			agentPanel.toggle();
+		} else if (action === "cycle-sidebar") {
+			panelManager.cycle();
 		} else if (action === "focus-file-search") {
 			panelManager.setMode("files");
 			requestAnimationFrame(() => {

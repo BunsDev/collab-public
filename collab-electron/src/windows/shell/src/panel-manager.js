@@ -198,20 +198,6 @@ export function createPanel(side, config) {
 			applyVisibility();
 			onModeChanged(mode);
 		},
-		toggleFiles() {
-			if (mode === "files") mode = "closed";
-			else mode = "files";
-			savePref(prefKey, mode);
-			applyVisibility();
-			onModeChanged(mode);
-		},
-		toggleTiles() {
-			if (mode === "tiles") mode = "closed";
-			else mode = "tiles";
-			savePref(prefKey, mode);
-			applyVisibility();
-			onModeChanged(mode);
-		},
 		setMode(m) {
 			mode = m;
 			savePref(prefKey, m);

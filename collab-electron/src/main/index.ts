@@ -181,8 +181,8 @@ interface ShortcutEntry {
 }
 
 const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry> = {
-  Backslash: { modifier: cmdOrCtrl, action: "toggle-files" },
-  Backquote: { modifier: cmdOrCtrl, action: "toggle-tiles" },
+  Backslash: { modifier: cmdOrCtrl, action: "toggle-agent" },
+  Backquote: { modifier: cmdOrCtrl, action: "cycle-sidebar" },
   Comma: { modifier: cmdOrCtrl, action: "toggle-settings" },
   KeyO: { modifier: shiftCmdOrCtrl, action: "add-workspace" },
   KeyP: { modifier: cmdOrCtrl, action: "focus-file-search" },
@@ -371,16 +371,16 @@ function buildAppMenu(): void {
       label: "View",
       submenu: [
         {
-          label: "Toggle Navigator",
+          label: "Toggle Agent",
           accelerator: "CommandOrControl+\\",
           registerAccelerator: false,
-          click: () => sendShortcut("toggle-files"),
+          click: () => sendShortcut("toggle-agent"),
         },
         {
-          label: "Toggle Terminal List",
+          label: "Cycle Sidebar",
           accelerator: "CommandOrControl+`",
           registerAccelerator: false,
-          click: () => sendShortcut("toggle-tiles"),
+          click: () => sendShortcut("cycle-sidebar"),
         },
         { type: "separator" },
         {
