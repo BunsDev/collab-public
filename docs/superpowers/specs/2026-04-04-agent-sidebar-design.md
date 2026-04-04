@@ -108,6 +108,7 @@ Shell renderer `handleShortcut()`:
 - `toggle-agent`: calls `agentPanel.toggle()`
 - `cycle-sidebar`: calls `panelManager.cycle()` — advances left sidebar through `closed → files → tiles → closed`
 - Remove `toggle-files` and `toggle-tiles` action branches (replaced by `cycle-sidebar`)
+- Update View menu items in `index.ts` that send `toggle-files`/`toggle-tiles` via `sendShortcut()` to use the new action names and labels
 
 ### Terminal webview lifecycle
 
