@@ -74,6 +74,7 @@ async function init() {
 		configs, workspaceData,
 		prefNavWidth, prefSidebarMode,
 		prefAgentWidth, prefAgentMode,
+		prefAgentPty,
 	] = await Promise.all([
 		window.shellApi.getViewConfig(),
 		window.shellApi.workspaceList(),
@@ -81,6 +82,7 @@ async function init() {
 		window.shellApi.getPref("sidebar-mode"),
 		window.shellApi.getPref("panel-width-agent"),
 		window.shellApi.getPref("sidebar-mode-agent"),
+		window.shellApi.getPref("agent-pty-session"),
 	]);
 
 	// DOM elements
@@ -197,8 +199,68 @@ async function init() {
 	});
 	panelManager.initPrefs(prefNavWidth, prefSidebarMode);
 
+	let agentTermWebview = null;
+	let agentPtySessionId = prefAgentPty || null;
+
 	function ensureAgentTerminal() {
-		// TODO: Task 6 — spawn agent terminal webview
+		if (agentTermWebview) return;
+
+		const termConfig = configs.terminalTile;
+		const params = new URLSearchParams();
+		params.set("tileId", "agent");
+
+		if (agentPtySessionId) {
+			params.set("sessionId", agentPtySessionId);
+			params.set("restored", "1");
+		} else {
+			const homeDir = window.shellApi.getHomePath?.() || "~";
+			params.set("cwd", `${homeDir}/.collaborator`);
+		}
+
+		const qs = params.toString();
+		const wv = document.createElement("webview");
+		wv.setAttribute(
+			"src",
+			qs ? `${termConfig.src}?${qs}` : termConfig.src,
+		);
+		wv.setAttribute("preload", termConfig.preload);
+		wv.setAttribute(
+			"webpreferences", "contextIsolation=yes, sandbox=yes",
+		);
+		wv.style.flex = "1";
+		wv.style.border = "none";
+
+		wv.addEventListener("dom-ready", () => {
+			if (agentPanel.isVisible()) {
+				wv.focus();
+				noteSurfaceFocus("agent");
+			}
+		});
+
+		wv.addEventListener("ipc-message", (event) => {
+			if (event.channel === "pty-session-id") {
+				agentPtySessionId = event.args[0];
+				window.shellApi.setPref(
+					"agent-pty-session", agentPtySessionId,
+				);
+			}
+		});
+
+		wv.addEventListener("console-message", (event) => {
+			window.shellApi.logFromWebview(
+				"agent-term", event.level, event.message, event.sourceId,
+			);
+		});
+
+		wv.addEventListener("focus", () => {
+			noteSurfaceFocus("agent");
+		});
+
+		panelAgent.appendChild(wv);
+		agentTermWebview = {
+			webview: wv,
+			send(ch, ...args) { wv.send(ch, ...args); },
+		};
 	}
 
 	const agentPanel = createPanel("agent", {
@@ -471,6 +533,10 @@ async function init() {
 		) {
 			surface = null;
 		}
+		if (surface === "agent" && !agentPanel.isVisible()) {
+			surface = null;
+		}
+		if (surface === "agent") return "agent";
 		if (surface === "viewer") return "viewer";
 		if (surface === "nav") return "nav";
 		if (panelManager.isVisible()) return "nav";
@@ -490,6 +556,12 @@ async function init() {
 				noteSurfaceFocus("canvas-tile");
 				return;
 			}
+		}
+
+		if (surface === "agent" && agentTermWebview && agentPanel.isVisible()) {
+			agentTermWebview.webview.focus();
+			noteSurfaceFocus("agent");
+			return;
 		}
 
 		requestAnimationFrame(() => {
@@ -536,6 +608,7 @@ async function init() {
 		all.push(singletonViewer);
 		all.push(tileListWebview);
 		all.push(singletonWebviews.settings);
+		if (agentTermWebview) all.push(agentTermWebview);
 		for (const [, dom] of tileManager.getTileDOMs()) {
 			if (dom.webview) {
 				all.push({
