@@ -181,11 +181,12 @@ interface ShortcutEntry {
 }
 
 const TOGGLE_SHORTCUTS: Record<string, ShortcutEntry> = {
-  Backslash: { modifier: cmdOrCtrl, action: "toggle-nav" },
-  Backquote: { modifier: cmdOrCtrl, action: "toggle-terminal-list" },
+  Backslash: { modifier: cmdOrCtrl, action: "toggle-files" },
+  Backquote: { modifier: cmdOrCtrl, action: "toggle-tiles" },
   Comma: { modifier: cmdOrCtrl, action: "toggle-settings" },
   KeyO: { modifier: shiftCmdOrCtrl, action: "add-workspace" },
-  KeyK: { modifier: cmdOrCtrl, action: "focus-search" },
+  KeyP: { modifier: cmdOrCtrl, action: "focus-file-search" },
+  KeyK: { modifier: cmdOrCtrl, action: "focus-tile-search" },
   KeyN: { modifier: cmdOrCtrl, action: "new-tile" },
   KeyW: { modifier: cmdOrCtrl, action: "close-tile" },
 };
@@ -195,6 +196,7 @@ const TOGGLE_SHORTCUT_KEYS: Record<string, ShortcutEntry> = {
   "`": TOGGLE_SHORTCUTS.Backquote!,
   ",": TOGGLE_SHORTCUTS.Comma!,
   o: TOGGLE_SHORTCUTS.KeyO!,
+  p: TOGGLE_SHORTCUTS.KeyP!,
   k: TOGGLE_SHORTCUTS.KeyK!,
   n: TOGGLE_SHORTCUTS.KeyN!,
   w: TOGGLE_SHORTCUTS.KeyW!,
@@ -361,7 +363,7 @@ function buildAppMenu(): void {
           label: "Find",
           accelerator: "CommandOrControl+K",
           registerAccelerator: false,
-          click: () => sendShortcut("focus-search"),
+          click: () => sendShortcut("focus-tile-search"),
         },
       ],
     },
@@ -372,13 +374,13 @@ function buildAppMenu(): void {
           label: "Toggle Navigator",
           accelerator: "CommandOrControl+\\",
           registerAccelerator: false,
-          click: () => sendShortcut("toggle-nav"),
+          click: () => sendShortcut("toggle-files"),
         },
         {
           label: "Toggle Terminal List",
           accelerator: "CommandOrControl+`",
           registerAccelerator: false,
-          click: () => sendShortcut("toggle-terminal-list"),
+          click: () => sendShortcut("toggle-tiles"),
         },
         { type: "separator" },
         {
@@ -525,6 +527,7 @@ ipcMain.handle("shell:get-view-config", () => {
     graphTile: { src: getRendererURL("graph-tile"), preload },
     settings: { src: getRendererURL("settings"), preload },
     terminalList: { src: getRendererURL("terminal-list"), preload },
+    tileList: { src: getRendererURL("tile-list"), preload },
   };
 });
 
