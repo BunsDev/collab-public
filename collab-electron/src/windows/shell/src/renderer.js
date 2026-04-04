@@ -1477,6 +1477,22 @@ async function init() {
 			: 0;
 		viewport.updateCanvas();
 		tileManager.restoreCanvasState(savedState.tiles);
+
+		// Batch-sync metadata for restored terminal tiles
+		const restoredTermTiles = tiles.filter(
+			(t) => t.type === "term" && t.ptySessionId,
+		);
+		if (restoredTermTiles.length > 0) {
+			const discovered =
+				await window.shellApi.ptyDiscover?.() ?? [];
+			for (const tile of restoredTermTiles) {
+				const session = discovered.find(
+					(entry) => entry.sessionId === tile.ptySessionId,
+				);
+				syncTerminalTileMeta(tile, session?.meta);
+			}
+			tileManager.saveCanvasDebounced();
+		}
 	}
 
 	// -- Initialize workspaces --
