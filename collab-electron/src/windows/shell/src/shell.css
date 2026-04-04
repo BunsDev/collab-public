@@ -10,7 +10,7 @@
 	--canvas-opacity: 0.5;
 	--fg: rgb(32, 32, 32);
 	--border: rgb(206, 206, 206);
-	--tile-border: rgb(180, 180, 180);
+	--tile-border: rgb(210, 210, 210);
 	--muted: rgb(113, 113, 123);
 	--edge-dot: rgb(34, 160, 90);
 	--edge-dot-hover: rgb(40, 190, 105);
@@ -31,7 +31,7 @@
 	--canvas-bg-rgb: 24, 24, 24;
 	--fg: rgb(220, 220, 220);
 	--border: rgba(255, 255, 255, 0.2);
-	--tile-border: rgba(255, 255, 255, 0.35);
+	--tile-border: rgb(50, 50, 50);
 	--muted: rgb(132, 132, 132);
 	--edge-dot: rgb(72, 210, 130);
 	--edge-dot-hover: rgb(90, 235, 150);
@@ -694,25 +694,57 @@ body.platform-win {
 
 .canvas-tile {
 	position: absolute;
-	border-radius: 8px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+	border-radius: 0;
+	box-shadow: none;
 	display: flex;
 	flex-direction: column;
 	background: var(--bg);
-	border: 1px solid rgba(128, 128, 128, 0.2);
+	border: 1px solid var(--tile-border);
 	user-select: none;
 }
 
+/* Crosshair corner extensions — lines overshoot each corner */
+.canvas-tile::before,
+.canvas-tile::after {
+	content: '';
+	position: absolute;
+	pointer-events: none;
+}
+
+/* Horizontal lines overshoot left/right */
+.canvas-tile::before {
+	top: -1px;
+	bottom: -1px;
+	left: -9px;
+	right: -9px;
+	border-top: 1px solid var(--tile-border);
+	border-bottom: 1px solid var(--tile-border);
+}
+
+/* Vertical lines overshoot top/bottom */
+.canvas-tile::after {
+	left: -1px;
+	right: -1px;
+	top: -9px;
+	bottom: -9px;
+	border-left: 1px solid var(--tile-border);
+	border-right: 1px solid var(--tile-border);
+}
+
 .canvas-tile.tile-focused {
-	box-shadow:
-		0 0 0 1px rgba(0, 0, 0, 0.5),
-		0 2px 8px rgba(0, 0, 0, 0.5);
+	border-color: rgba(0, 0, 0, 0.5);
+}
+.canvas-tile.tile-focused::before,
+.canvas-tile.tile-focused::after {
+	border-color: rgba(0, 0, 0, 0.5);
 }
 
 .dark .canvas-tile.tile-focused {
-	box-shadow:
-		0 0 0 1px rgba(255, 255, 255, 0.5),
-		0 2px 8px rgba(0, 0, 0, 0.5);
+	border-color: rgba(255, 255, 255, 0.5);
+}
+.dark .canvas-tile.tile-focused::before,
+.dark .canvas-tile.tile-focused::after {
+	border-color: rgba(255, 255, 255, 0.5);
 }
 
 
@@ -725,7 +757,7 @@ body.platform-win {
 	padding: 6px 8px;
 	background: var(--bg);
 	border-bottom: none;
-	border-radius: 7px 7px 0 0;
+	border-radius: 0;
 	cursor: grab;
 	user-select: none;
 	flex-shrink: 0;
@@ -796,7 +828,7 @@ body.platform-win {
 	flex: 1;
 	overflow: hidden;
 	position: relative;
-	border-radius: 0 0 7px 7px;
+	border-radius: 0;
 }
 
 .tile-content webview {
@@ -829,7 +861,7 @@ body.platform-win {
 	color: rgba(0, 0, 0, 0.85);
 	height: auto;
 	padding: 6px 8px;
-	border-radius: 7px 7px 0 0;
+	border-radius: 0;
 }
 
 .dark .canvas-tile[data-tile-type="note"] .tile-title-bar,
@@ -998,9 +1030,18 @@ body.platform-win {
 .canvas-tile.tile-selected {
 	border-color: #4a9eff;
 }
+.canvas-tile.tile-selected::before,
+.canvas-tile.tile-selected::after {
+	border-color: #4a9eff;
+}
 
 .canvas-tile.tile-dragging {
 	opacity: 0.85;
+}
+
+.canvas-tile.tile-dragging::before,
+.canvas-tile.tile-dragging::after {
+	display: none;
 }
 
 .selection-marquee {

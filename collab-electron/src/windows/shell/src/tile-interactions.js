@@ -58,6 +58,8 @@ export function attachDrag(titleBar, tile, {
     const webviews = getAllWebviews();
     disablePointerEvents(webviews);
 
+    const container = titleBar.closest(".canvas-tile");
+    container.classList.add("tile-dragging");
     if (isGroupDrag) {
       for (const entry of groupCtx) {
         entry.container.classList.add("tile-dragging");
@@ -90,6 +92,7 @@ export function attachDrag(titleBar, tile, {
       enablePointerEvents(webviews);
 
       if (shiftHeld && !moved) {
+        container.classList.remove("tile-dragging");
         if (isGroupDrag) {
           for (const entry of groupCtx) {
             entry.container.classList.remove("tile-dragging");
@@ -103,6 +106,7 @@ export function attachDrag(titleBar, tile, {
         onFocus(tile.id, e);
       }
 
+      container.classList.remove("tile-dragging");
       if (isGroupDrag) {
         for (const entry of groupCtx) {
           entry.container.classList.remove("tile-dragging");
