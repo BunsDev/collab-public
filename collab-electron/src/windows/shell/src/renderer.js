@@ -172,6 +172,8 @@ async function init() {
 		label: "Navigator",
 		defaultWidth: 280,
 		direction: 1,
+		validModes: ["closed", "files", "tiles"],
+		prefKey: "sidebar-mode",
 		getAllWebviews,
 		onVisibilityChanged(visible) {
 			if (visible) {
