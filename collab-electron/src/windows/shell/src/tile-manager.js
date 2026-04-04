@@ -26,6 +26,7 @@ export function createTileManager({
 	onTerminalTileClosed,
 	onTileFocused,
 	onTileDblClick,
+	onReposition,
 }) {
 	/** @type {Map<string, {container: HTMLElement, contentArea: HTMLElement, titleText: HTMLElement, webview?: HTMLElement}>} */
 	const tileDOMs = new Map();
@@ -98,6 +99,7 @@ export function createTileManager({
 				viewportState.zoom,
 			);
 		}
+		onReposition?.();
 	}
 
 	// -- Selection visuals --

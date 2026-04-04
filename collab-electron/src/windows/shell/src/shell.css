@@ -661,17 +661,21 @@ body.platform-win {
 #minimap-wrapper {
 	position: absolute;
 	bottom: 12px;
-	right: 12px;
+	right: 14px;
 	width: 200px;
 	height: 140px;
 	z-index: 105;
-	background: rgba(10, 10, 25, 0.88);
-	border: 1px solid rgba(255, 255, 255, 0.12);
+	background: rgba(140, 140, 140, 0.25);
+	border: none;
 	border-radius: 6px;
 	backdrop-filter: blur(8px);
 	opacity: 0;
 	transition: opacity 150ms ease;
 	pointer-events: none;
+}
+
+.dark #minimap-wrapper {
+	background: rgba(18, 18, 18, 0.25);
 }
 
 #minimap-wrapper.visible {

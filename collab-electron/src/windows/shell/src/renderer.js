@@ -469,10 +469,12 @@ async function init() {
 
 	// -- Tile manager --
 
+	let minimapRef = null;
 	const tileManager = createTileManager({
 		tileLayer, viewportState, configs,
 		getAllWebviews,
 		isSpaceHeld: () => spaceHeld,
+		onReposition: () => minimapRef?.update(),
 		onSaveDebounced(state) {
 			window.shellApi.canvasSaveState(
 				toCenterPointState(state),
@@ -532,6 +534,7 @@ async function init() {
 		getTiles: () => tiles,
 		viewport,
 	});
+	minimapRef = minimap;
 
 	// -- Canvas RPC --
 
@@ -1478,6 +1481,7 @@ async function init() {
 			: 0;
 		viewport.updateCanvas();
 		tileManager.restoreCanvasState(savedState.tiles);
+		minimap.update();
 
 		// Batch-sync metadata for restored terminal tiles
 		const restoredTermTiles = tiles.filter(

@@ -16,7 +16,7 @@ const TILE_COLORS = {
 
 const TILE_OPACITY = 0.8;
 const VP_BORDER_OPACITY = 0.55;
-const VP_FILL_OPACITY = 0.04;
+const SCRIM_OPACITY = 0.18;
 
 export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, viewport }) {
 	const canvasEl = viewportEl;
@@ -162,12 +162,17 @@ export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, 
 
 		if (vpW <= 0 || vpH <= 0) return;
 
-		ctx.globalAlpha = VP_FILL_OPACITY;
-		ctx.fillStyle = "#ffffff";
-		ctx.fillRect(vpX, vpY, vpW, vpH);
+		const isDark = document.documentElement.classList.contains("dark");
+
+		ctx.globalAlpha = SCRIM_OPACITY;
+		ctx.fillStyle = isDark ? "#000000" : "#ffffff";
+		ctx.beginPath();
+		ctx.rect(0, 0, MINIMAP_W, MINIMAP_H);
+		ctx.rect(vpX, vpY, vpW, vpH);
+		ctx.fill("evenodd");
 
 		ctx.globalAlpha = VP_BORDER_OPACITY;
-		ctx.strokeStyle = "#ffffff";
+		ctx.strokeStyle = isDark ? "#ffffff" : "#000000";
 		ctx.lineWidth = 1.5;
 		ctx.strokeRect(vpX, vpY, vpW, vpH);
 
