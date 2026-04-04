@@ -550,7 +550,9 @@ async function init() {
 	// -- Agent panel init (after tileManager, since getAllWebviews references it) --
 
 	agentPanel.initPrefs(prefAgentWidth, prefAgentMode);
-	agentPanel.setupResize();
+	agentPanel.setupResize(() => {
+		agentPanel.updateTogglePosition();
+	});
 
 	// -- Surface focus management --
 
@@ -1209,6 +1211,7 @@ async function init() {
 	const panelsEl = document.getElementById("panels");
 	new ResizeObserver(() => {
 		panelManager.updateTogglePosition();
+		agentPanel.updateTogglePosition();
 	}).observe(panelsEl);
 
 	// -- Nav toggle --
