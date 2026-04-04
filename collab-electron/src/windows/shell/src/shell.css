@@ -17,6 +17,8 @@
 
 	--panel-nav-min: 100;
 	--panel-nav-max: 1000;
+	--panel-agent-min: 200;
+	--panel-agent-max: 1000;
 
 	--toolbar-height: 38px;
 }
@@ -164,6 +166,23 @@ body.platform-win {
 
 .platform-win #panel-viewer {
 	background: rgba(var(--canvas-bg-rgb), var(--canvas-opacity));
+}
+
+#panel-agent {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	min-height: 0;
+	border-left: 1px solid var(--border);
+	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
+}
+
+.platform-win #panel-agent {
+	background: rgba(var(--bg-rgb), calc(1 - (1 - var(--canvas-opacity)) / 2));
+}
+
+#panel-agent webview {
+	flex: 1;
 }
 
 #grid-canvas {
