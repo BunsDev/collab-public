@@ -720,6 +720,7 @@ async function init() {
 		);
 		tileManager.spawnTerminalWebview(tile, true);
 		tileManager.saveCanvasImmediate();
+		minimap.update();
 	});
 
 	// -- Right-click context menu --
@@ -749,12 +750,14 @@ async function init() {
 			);
 			tileManager.spawnTerminalWebview(tile, true);
 			tileManager.saveCanvasImmediate();
+			minimap.update();
 		} else if (selected === "new-browser") {
 			const tile = tileManager.createCanvasTile(
 				"browser", cx, cy,
 			);
 			tileManager.spawnBrowserWebview(tile, true);
 			tileManager.saveCanvasImmediate();
+			minimap.update();
 		}
 	});
 
@@ -832,6 +835,7 @@ async function init() {
 				}
 				clearSelection();
 				tileManager.syncSelectionVisuals();
+				minimap.update();
 			});
 		}
 	});
@@ -975,6 +979,7 @@ async function init() {
 			);
 			tileManager.spawnTerminalWebview(tile, true);
 			tileManager.saveCanvasImmediate();
+			minimap.update();
 		} else if (action === "close-tile") {
 			const focusedId = tileManager.getFocusedTileId();
 			if (focusedId) {
@@ -982,6 +987,7 @@ async function init() {
 				tileManager.setFocusedTileId(null);
 				canvasEl.focus();
 				noteSurfaceFocus("canvas");
+				minimap.update();
 			}
 		}
 	}
@@ -1043,6 +1049,7 @@ async function init() {
 				}
 				if (channel === "files-deleted") {
 					tileManager.closeTilesForDeletedPaths(args[0]);
+					minimap.update();
 				}
 				if (channel !== "workspace-changed") {
 					singletonViewer.send(channel, ...args);
@@ -1074,6 +1081,7 @@ async function init() {
 					);
 					tileManager.spawnTerminalWebview(tile, true);
 					tileManager.saveCanvasImmediate();
+					minimap.update();
 				}
 				if (channel === "open-browser-tile") {
 					const url = args[0];
@@ -1100,6 +1108,7 @@ async function init() {
 					);
 					tileManager.spawnBrowserWebview(newTile, true);
 					tileManager.saveCanvasImmediate();
+					minimap.update();
 				}
 				if (channel === "create-graph-tile") {
 					const folderPath = args[0];
@@ -1116,6 +1125,7 @@ async function init() {
 					tileManager.createGraphTile(
 						cx, cy, folderPath, wsPath,
 					);
+					minimap.update();
 				}
 			}
 		},
@@ -1144,6 +1154,7 @@ async function init() {
 				tile.ptySessionId === payload.sessionId
 			) {
 				tileManager.closeCanvasTile(id);
+				minimap.update();
 				break;
 			}
 		}

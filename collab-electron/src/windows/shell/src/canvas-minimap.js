@@ -152,10 +152,15 @@ export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, 
 		let vpW = vpWorldW * minimapScale;
 		let vpH = vpWorldH * minimapScale;
 
-		const vpX = Math.max(0, Math.min(vpPos.x, MINIMAP_W));
-		const vpY = Math.max(0, Math.min(vpPos.y, MINIMAP_H));
-		vpW = Math.min(vpW, MINIMAP_W - vpX);
-		vpH = Math.min(vpH, MINIMAP_H - vpY);
+		let vpX = vpPos.x;
+		let vpY = vpPos.y;
+
+		if (vpX < 0) { vpW += vpX; vpX = 0; }
+		if (vpY < 0) { vpH += vpY; vpY = 0; }
+		if (vpX + vpW > MINIMAP_W) vpW = MINIMAP_W - vpX;
+		if (vpY + vpH > MINIMAP_H) vpH = MINIMAP_H - vpY;
+
+		if (vpW <= 0 || vpH <= 0) return;
 
 		ctx.globalAlpha = VP_FILL_OPACITY;
 		ctx.fillStyle = "#ffffff";
@@ -349,6 +354,11 @@ export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, 
 				canvas.style.cursor = "crosshair";
 			}
 		}
+	});
+
+	canvas.addEventListener("pointercancel", (e) => {
+		e.stopPropagation();
+		dragging = false;
 	});
 
 	canvas.addEventListener("wheel", (e) => {
