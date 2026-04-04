@@ -13,6 +13,7 @@ interface AllViewConfigs {
   graphTile: ViewConfig;
   settings: ViewConfig;
   terminalList: ViewConfig;
+  tileList: ViewConfig;
 }
 
 const ALLOWED_PANELS = new Set([

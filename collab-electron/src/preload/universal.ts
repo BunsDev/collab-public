@@ -573,6 +573,29 @@ contextBridge.exposeInMainWorld("api", {
       }
     };
   },
+
+  onTileListMessage: (
+    cb: (channel: string, ...args: unknown[]) => void,
+  ) => {
+    const channels = [
+      "tile-list:init",
+      "tile-list:add",
+      "tile-list:remove",
+      "tile-list:update",
+      "tile-list:focus",
+    ];
+    const handlers = channels.map((ch) => {
+      const handler = (_event: unknown, ...args: unknown[]) =>
+        cb(ch, ...args);
+      ipcRenderer.on(ch, handler);
+      return { ch, handler };
+    });
+    return () => {
+      for (const { ch, handler } of handlers) {
+        ipcRenderer.removeListener(ch, handler);
+      }
+    };
+  },
 });
 
 // Forward ctrl+wheel (trackpad pinch) from tile webviews to the canvas
