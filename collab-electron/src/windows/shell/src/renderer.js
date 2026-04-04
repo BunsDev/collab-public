@@ -293,8 +293,7 @@ async function init() {
 			}
 		},
 	});
-	agentPanel.initPrefs(prefAgentWidth, prefAgentMode);
-	agentPanel.setupResize();
+	// agentPanel.initPrefs deferred until after tileManager (getAllWebviews references it)
 
 	function syncTerminalTileMeta(tile, meta) {
 		if (!meta) return;
@@ -526,6 +525,11 @@ async function init() {
 	});
 
 	edgeIndicators.update();
+
+	// -- Agent panel init (after tileManager, since getAllWebviews references it) --
+
+	agentPanel.initPrefs(prefAgentWidth, prefAgentMode);
+	agentPanel.setupResize();
 
 	// -- Surface focus management --
 
@@ -1523,4 +1527,8 @@ async function checkFirstLaunchDialog() {
 	}, { once: true });
 }
 
-init();
+init().catch((err) => {
+	console.error("[shell] init() failed:", err);
+	const el = document.getElementById("loading-status");
+	if (el) el.textContent = `ERROR: ${err?.message || err}`;
+});
