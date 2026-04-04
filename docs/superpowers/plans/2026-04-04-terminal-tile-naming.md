@@ -201,11 +201,13 @@ git commit -m "feat: persist and restore userTitle/autoTitle in canvas state"
 ### Task 3: Update syncTerminalTileMeta — write autoTitle, remove displayName
 
 **Files:**
-- Modify: `collab-electron/src/windows/shell/src/renderer.js:192-238`
+- Modify: `collab-electron/src/windows/shell/src/renderer.js:301-347`
+
+**Context:** The renderer now has a `syncTileList()` function (line 441) that automatically syncs the tile list on every canvas save. It calls `buildTileListEntry()` internally. Both `onSaveDebounced` and `onSaveImmediate` callbacks trigger `syncTileList()`.
 
 - [ ] **Step 1: Add `getTileLabel` to renderer.js imports**
 
-In `collab-electron/src/windows/shell/src/renderer.js`, update the import from `tile-renderer.js` (line 15) to include `getTileLabel`:
+In `collab-electron/src/windows/shell/src/renderer.js`, update the import from `tile-renderer.js` (line 16) to include `getTileLabel`:
 
 ```javascript
 import { updateTileTitle, getTileLabel } from "./tile-renderer.js";
@@ -213,7 +215,7 @@ import { updateTileTitle, getTileLabel } from "./tile-renderer.js";
 
 - [ ] **Step 2: Replace syncTerminalTileMeta (full function replacement)**
 
-In `collab-electron/src/windows/shell/src/renderer.js`, replace the entire `syncTerminalTileMeta` function. This removes the old `tile.displayName` write:
+In `collab-electron/src/windows/shell/src/renderer.js` (line 301-309), replace the entire `syncTerminalTileMeta` function. This removes the old `tile.displayName` write:
 
 ```javascript
 function syncTerminalTileMeta(tile, meta) {
@@ -233,7 +235,7 @@ Key changes:
 
 - [ ] **Step 3: Replace buildTileListEntry term branch (full replacement of term case)**
 
-In `buildTileListEntry`, replace the entire term branch. This removes the old `tile.displayName` reference:
+In `buildTileListEntry` (line 311-347), replace the entire term branch (line 317-320). This removes the old `tile.displayName` reference:
 
 ```javascript
 if (tile.type === "term") {
@@ -246,7 +248,7 @@ if (tile.type === "term") {
 }
 ```
 
-This uses the same `getTileLabel` resolution chain, so it respects userTitle > autoTitle > cwd > "Terminal".
+This uses the same `getTileLabel` resolution chain, so it respects userTitle > autoTitle > cwd > "Terminal". The existing `syncTileList()` function will pick up the change automatically on every canvas save.
 
 - [ ] **Step 4: Commit**
 
@@ -260,18 +262,14 @@ git commit -m "feat: sync autoTitle from session metadata, remove displayName"
 ### Task 4: Fix restore bug — sync metadata for restored terminal tiles
 
 **Files:**
-- Modify: `collab-electron/src/windows/shell/src/renderer.js` (after restoreCanvasState call)
+- Modify: `collab-electron/src/windows/shell/src/renderer.js` (after line 1476, the restoreCanvasState call)
 
-- [ ] **Step 1: Find where restoreCanvasState is called**
+- [ ] **Step 1: Add batched metadata sync after restore**
 
-Search for `restoreCanvasState` in `renderer.js` to find where tile restoration happens. The sync logic should be added right after this call.
-
-- [ ] **Step 2: Add batched metadata sync after restore**
-
-After the `restoreCanvasState()` call in `renderer.js`, add a batch sync for all restored terminal tiles:
+After `tileManager.restoreCanvasState(savedState.tiles)` on line 1476 of `renderer.js`, add a batch sync for all restored terminal tiles. The `init()` function is already async, so `await` works here. `tiles` is already imported from `canvas-state.js` at the top of the file.
 
 ```javascript
-// After restoreCanvasState(savedState.tiles) call:
+tileManager.restoreCanvasState(savedState.tiles);
 
 // Batch-sync metadata for restored terminal tiles
 const restoredTermTiles = tiles.filter(
@@ -286,16 +284,13 @@ if (restoredTermTiles.length > 0) {
     );
     syncTerminalTileMeta(tile, session?.meta);
   }
+  tileManager.saveCanvasDebounced();
 }
 ```
 
-Import `tiles` from `canvas-state.js` if not already imported at the top of the file where this code lives.
+The trailing `saveCanvasDebounced()` persists the refreshed `autoTitle` values and triggers `syncTileList()` to update the tile list sidebar.
 
-- [ ] **Step 3: Verify the restore path is async-compatible**
-
-Check that the function containing `restoreCanvasState()` is async (since `ptyDiscover` returns a Promise). If not, wrap in an async IIFE or make the function async.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 git add collab-electron/src/windows/shell/src/renderer.js
@@ -304,19 +299,14 @@ git commit -m "fix: sync terminal tile metadata on app restore"
 
 ---
 
-### Task 5: Set autoTitle on new terminal tile creation
+### Task 5: Persist autoTitle on new terminal tile creation
 
 **Files:**
-- Modify: `collab-electron/src/windows/shell/src/renderer.js` (onTerminalSessionCreated callback)
-- Modify: `collab-electron/src/windows/shell/src/tile-manager.js` (saveCanvasDebounced after sync)
+- Modify: `collab-electron/src/windows/shell/src/renderer.js:487-495` (onTerminalSessionCreated callback)
 
-- [ ] **Step 1: Update onTerminalSessionCreated to set autoTitle**
+- [ ] **Step 1: Add saveCanvasDebounced after syncTerminalTileMeta**
 
-The existing `onTerminalSessionCreated` callback in `renderer.js` (around line 337) already calls `syncTerminalTileMeta`, which now sets `autoTitle`. Verify this is the case by reading the current code. The `syncTerminalTileMeta` update from Task 3 should handle this automatically.
-
-- [ ] **Step 2: Trigger a canvas save after metadata sync**
-
-After `syncTerminalTileMeta` runs for a new session, the `autoTitle` needs to be persisted. Check if `saveCanvasDebounced()` is already called after `onTerminalSessionCreated`. If not, add it:
+The `onTerminalSessionCreated` callback (line 487-495) already calls `syncTerminalTileMeta`, which now sets `autoTitle` (from Task 3). But `autoTitle` needs to be persisted. Add `tileManager.saveCanvasDebounced()` after the sync. This also triggers `syncTileList()` automatically (the tile list already uses `syncTileList()` on line 494):
 
 ```javascript
 async onTerminalSessionCreated(tile) {
@@ -327,13 +317,11 @@ async onTerminalSessionCreated(tile) {
   );
   syncTerminalTileMeta(tile, session?.meta);
   tileManager.saveCanvasDebounced();
-  tileListWebview.send(
-    "tile-list:update", buildTileListEntry(tile),
-  );
+  syncTileList();
 },
 ```
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 git add collab-electron/src/windows/shell/src/renderer.js

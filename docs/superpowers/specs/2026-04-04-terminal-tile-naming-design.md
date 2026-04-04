@@ -101,7 +101,10 @@ No visual indicator distinguishing overridden names from auto-names.
 | Canvas state save | `src/windows/shell/src/tile-manager.js` | 49-72 (getCanvasStateForSave — add userTitle, autoTitle) |
 | Canvas state restore | `src/windows/shell/src/tile-manager.js` | 624-633 (restoreCanvasState — forward userTitle, autoTitle) |
 | Renderer-side tile typedef | `src/windows/shell/src/canvas-state.js` | Tile JSDoc typedef — add fields |
-| Metadata sync | `src/windows/shell/src/renderer.js` | 214-222 (syncTerminalTileMeta) |
+| Metadata sync | `src/windows/shell/src/renderer.js` | 301-309 (syncTerminalTileMeta) |
+| Tile list sync | `src/windows/shell/src/renderer.js` | 311-347 (buildTileListEntry), 441-465 (syncTileList) |
+| Terminal session callback | `src/windows/shell/src/renderer.js` | 487-495 (onTerminalSessionCreated) |
+| Canvas restore call site | `src/windows/shell/src/renderer.js` | 1476 (restoreCanvasState call) |
 | Terminal tile creation | `src/main/pty.ts` | 393-525 (createSession) |
 | Terminal tile restore | `src/windows/terminal-tile/src/App.tsx` | 54-100 (ptyReconnect) |
 | Session reconnect | `src/main/pty.ts` | 536-648 (reconnectSession) |
