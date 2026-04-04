@@ -46,9 +46,13 @@ The current two-sidebar layout (nav on left, terminal list on right) wastes scre
 Transitions:
 
 * `Cmd+\`: if closed → files. If files → closed. If tiles → files.
+
 * `Cmd+``: if closed → tiles. If tiles → closed. If files → tiles.
+
 * Segmented control click: switches between `files` and `tiles` (sidebar stays open)
+
 * `Cmd+P`: jumps to `files`, opens sidebar if closed, focuses search
+
 * `Cmd+K`: jumps to `tiles`, opens sidebar if closed, focuses search
 
 State is persisted as `sidebar-mode` in config.
@@ -172,8 +176,11 @@ New React app: `src/windows/tile-list/`
 **Renderer shortcut handler:**
 
 * `toggle-files`: if closed → files. If files → closed. If tiles → files. Persist.
+
 * `toggle-tiles`: if closed → tiles. If tiles → closed. If files → tiles. Persist.
+
 * `focus-file-search`: set mode to `files`, open sidebar if closed, focus search input in nav webview
+
 * `focus-tile-search`: set mode to `tiles`, open sidebar if closed, focus search input in tile-list webview
 
 **Breaking change:** The nav webview's internal `Cmd+K` handler (in `App.tsx`) must be removed. `Cmd+K` is now always captured by the main process and routed to tile search. File search is triggered by `Cmd+P` via `focus-file-search`, which the shell renderer forwards to the nav webview.
@@ -185,6 +192,7 @@ The existing `createPanel()` function in `panel-manager.js` manages a single pan
 * `mode`: `"closed"` | `"files"` | `"tiles"`
 
 * `toggleFiles()`: closed→files, files→closed, tiles→files
+
 * `toggleTiles()`: closed→tiles, tiles→closed, files→tiles
 
 * `setMode(m)`: set mode directly (for segmented control and search shortcuts)
