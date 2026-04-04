@@ -9,8 +9,6 @@
  * @param {string} config.label - Human-readable label ("Navigator", "Terminals")
  * @param {number} config.defaultWidth - Default panel width in pixels
  * @param {1|-1} config.direction - Resize drag direction: 1=left panel, -1=right panel
- * @param {string[]} [config.validModes] - Valid mode strings; index 1 is the default open mode
- * @param {string} [config.prefKey] - Preference key for persisting mode
  * @param {() => Array} [config.getAllWebviews] - Returns all webviews for pointer-event blocking during resize
  * @param {(visible: boolean) => void} [config.onVisibilityChanged] - Called when visibility changes
  * @param {(mode: string) => void} [config.onModeChanged] - Called when mode changes
@@ -30,15 +28,13 @@ export function createPanel(side, config) {
 	const {
 		panel, resizeHandle, toggle,
 		label, defaultWidth, direction,
-		validModes = ["closed", "files", "tiles"],
-		prefKey = "sidebar-mode",
 		getAllWebviews = () => [],
 		onVisibilityChanged = () => {},
 		onModeChanged = () => {},
 	} = config;
 
-	let mode = validModes[1] || "closed";
-	let lastOpenMode = validModes[1] || "closed";
+	let mode = "files";
+	let lastOpenMode = "files";
 	let width = defaultWidth;
 	const prefCache = {};
 
@@ -175,10 +171,10 @@ export function createPanel(side, config) {
 			width = Number(prefWidth) || defaultWidth;
 			panel.style.flex = `0 0 ${width}px`;
 		}
-		if (prefMode != null && validModes.includes(prefMode)) {
+		if (prefMode != null && ["closed", "files", "tiles"].includes(prefMode)) {
 			mode = prefMode;
 		} else {
-			mode = validModes[1] || "closed";
+			mode = "files"; // default to files if no saved pref
 		}
 		applyVisibility();
 	}
@@ -189,60 +185,43 @@ export function createPanel(side, config) {
 		isVisible() { return mode !== "closed"; },
 		toggle() {
 			if (mode === "closed") {
-				mode = lastOpenMode || validModes[1] || "closed";
+				mode = lastOpenMode || "files";
 			} else {
 				lastOpenMode = mode;
 				mode = "closed";
 			}
-			savePref(prefKey, mode);
+			savePref("sidebar-mode", mode);
 			applyVisibility();
 			onModeChanged(mode);
 		},
 		toggleFiles() {
 			if (mode === "files") mode = "closed";
 			else mode = "files";
-			savePref(prefKey, mode);
+			savePref("sidebar-mode", mode);
 			applyVisibility();
 			onModeChanged(mode);
 		},
 		toggleTiles() {
 			if (mode === "tiles") mode = "closed";
 			else mode = "tiles";
-			savePref(prefKey, mode);
+			savePref("sidebar-mode", mode);
 			applyVisibility();
 			onModeChanged(mode);
 		},
 		setMode(m) {
 			mode = m;
-			savePref(prefKey, m);
+			savePref("sidebar-mode", m);
 			applyVisibility();
 			onModeChanged(mode);
 		},
 		setVisible(v) {
 			if (v) {
-				mode = lastOpenMode || validModes[1] || "closed";
+				mode = lastOpenMode || "files";
 			} else {
 				if (mode !== "closed") lastOpenMode = mode;
 				mode = "closed";
 			}
-			savePref(prefKey, mode);
-			applyVisibility();
-			onModeChanged(mode);
-		},
-		cycle() {
-			const openModes = validModes.filter(m => m !== "closed");
-			if (mode === "closed") {
-				mode = openModes[0] || "closed";
-			} else {
-				const idx = openModes.indexOf(mode);
-				if (idx >= 0 && idx < openModes.length - 1) {
-					mode = openModes[idx + 1];
-				} else {
-					lastOpenMode = mode;
-					mode = "closed";
-				}
-			}
-			savePref(prefKey, mode);
+			savePref("sidebar-mode", mode);
 			applyVisibility();
 			onModeChanged(mode);
 		},

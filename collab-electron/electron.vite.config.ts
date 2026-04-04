@@ -80,10 +80,7 @@ export default defineConfig({
             __dirname,
             "src/windows/graph-tile/index.html",
           ),
-          "terminal-list": resolve(
-            __dirname,
-            "src/windows/terminal-list/index.html",
-          ),
+          "tile-list": resolve(__dirname, "src/windows/tile-list/index.html"),
         },
       },
     },

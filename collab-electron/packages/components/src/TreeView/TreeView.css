@@ -437,6 +437,66 @@
 	opacity: 1;
 }
 
+/* Workspace rows */
+
+.workspace-group {
+	position: relative;
+}
+
+.workspace-row {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 6px 8px 4px;
+	cursor: default;
+	user-select: none;
+}
+
+.workspace-row:hover {
+	background: var(--color-active);
+}
+
+.workspace-row.dimmed {
+	opacity: 0.4;
+}
+
+.workspace-chevron {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 12px;
+	flex-shrink: 0;
+	opacity: 0.5;
+}
+
+.workspace-label {
+	display: flex;
+	align-items: baseline;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.workspace-parent {
+	font-family: var(--font-mono);
+	font-size: 0.7rem;
+	font-weight: 400;
+	color: var(--muted-foreground);
+	opacity: 0.6;
+	white-space: nowrap;
+	flex-shrink: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.workspace-name {
+	font-family: var(--font-mono);
+	font-size: 0.8rem;
+	font-weight: 500;
+	color: var(--foreground);
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
 /* Inline rename input */
 .inline-rename-input {
 	font-family: var(--font-mono);

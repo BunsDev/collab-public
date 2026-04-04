@@ -19,7 +19,10 @@ import {
 	formatRelativeTime,
 	displayFileName,
 } from './Helpers';
-import { displayBasename } from '@collab/shared/path-utils';
+import {
+	displayBasename,
+	splitDisplayPath,
+} from '@collab/shared/path-utils';
 import type { SortMode } from './types';
 import { SearchSortControls } from './SearchSortControls';
 import type { SearchSortControlsHandle } from './SearchSortControls';
@@ -74,7 +77,7 @@ interface FolderRowProps {
 	onRenameCancel: () => void;
 	onContextMenu?: (
 		e: React.MouseEvent,
-		item: FlatItem,
+		item: FlatItem | null,
 	) => void;
 	isDropTarget: boolean;
 	onDragStart?: (
@@ -234,6 +237,75 @@ const FolderRow = React.memo(function FolderRow({
 	);
 });
 
+interface WorkspaceRowProps {
+	item: FlatItem;
+	isFirst: boolean;
+	dimmed: boolean;
+	onToggle: () => void;
+	onContextMenu?: (
+		e: React.MouseEvent,
+		item: FlatItem | null,
+	) => void;
+}
+
+const WorkspaceRow = React.memo(
+	function WorkspaceRow({
+		item,
+		isFirst,
+		dimmed,
+		onToggle,
+		onContextMenu,
+	}: WorkspaceRowProps) {
+		const { parent } = splitDisplayPath(item.path);
+		const className =
+			'workspace-row' + (dimmed ? ' dimmed' : '');
+		return (
+			<div
+				className={className}
+				style={{
+					borderTop: isFirst
+						? 'none'
+						: '1px solid var(--border-subtle, var(--border))',
+				}}
+				onClick={onToggle}
+				onContextMenu={(e) => {
+					e.preventDefault();
+					onContextMenu?.(e, item);
+				}}
+			>
+				<span className="workspace-chevron">
+					{item.isExpanded ? (
+						<CaretDown
+							size={10}
+							weight="bold"
+						/>
+					) : (
+						<CaretRight
+							size={10}
+							weight="bold"
+						/>
+					)}
+				</span>
+				<div className="workspace-label">
+					<span className="workspace-parent">
+						{parent}
+					</span>
+					<span className="workspace-name">
+						{item.name}
+					</span>
+				</div>
+			</div>
+		);
+	},
+	(prev, next) =>
+		prev.item.id === next.item.id &&
+		prev.item.isExpanded === next.item.isExpanded &&
+		prev.item.name === next.item.name &&
+		prev.isFirst === next.isFirst &&
+		prev.dimmed === next.dimmed &&
+		prev.onContextMenu === next.onContextMenu,
+);
+
 export interface FileRowProps {
 	item: FlatItem;
 	isSelected: boolean;
@@ -256,7 +328,7 @@ export interface FileRowProps {
 	onRenameCancel?: () => void;
 	onContextMenu?: (
 		e: React.MouseEvent,
-		item: FlatItem,
+		item: FlatItem | null,
 	) => void;
 	onDragStart?: (
 		e: React.DragEvent,
@@ -514,11 +586,38 @@ export const TreeView: React.FC<
 		const query = searchQuery.toLowerCase();
 		const source = allFiles ?? flatItems;
 		return source.filter((item) => {
+			if (item.kind === 'workspace') return true;
 			if (item.kind === 'folder') return true;
 			return item.name
 				.toLowerCase()
 				.includes(query);
 		});
+	}, [flatItems, allFiles, searchQuery]);
+
+	const dimmedWorkspaces = useMemo(() => {
+		if (!searchQuery.trim()) return new Set<string>();
+		const query = searchQuery.toLowerCase();
+		const source = allFiles ?? flatItems;
+		const withMatches = new Set<string>();
+		for (const item of source) {
+			if (
+				item.kind === 'file' &&
+				item.workspacePath &&
+				item.name.toLowerCase().includes(query)
+			) {
+				withMatches.add(item.workspacePath);
+			}
+		}
+		const dimmed = new Set<string>();
+		for (const item of source) {
+			if (
+				item.kind === 'workspace' &&
+				!withMatches.has(item.path)
+			) {
+				dimmed.add(item.path);
+			}
+		}
+		return dimmed;
 	}, [flatItems, allFiles, searchQuery]);
 
 	const deleteConfirmRef = useRef(deleteConfirmId);
@@ -740,11 +839,67 @@ export const TreeView: React.FC<
 		const nodes: React.ReactNode[] = [];
 		let i = start;
 
+		let workspaceIndex = 0;
 		while (i < filteredItems.length) {
 			const item = filteredItems[i]!;
 			if (item.level < minLevel) break;
 
-			if (
+			if (item.kind === 'workspace') {
+				const isFirst = workspaceIndex === 0;
+				const isDimmed = dimmedWorkspaces.has(
+					item.path,
+				);
+				workspaceIndex++;
+				i++;
+				if (item.isExpanded) {
+					const [children, nextI] =
+						renderItems(
+							i,
+							item.level + 1,
+						);
+					nodes.push(
+						<div
+							key={item.id}
+							className="workspace-group"
+						>
+							<WorkspaceRow
+								item={item}
+								isFirst={isFirst}
+								dimmed={isDimmed}
+								onToggle={() =>
+									onToggleFolder(
+										item.path,
+										false,
+									)
+								}
+								onContextMenu={
+									onContextMenu
+								}
+							/>
+							{children}
+						</div>,
+					);
+					i = nextI;
+				} else {
+					nodes.push(
+						<WorkspaceRow
+							key={item.id}
+							item={item}
+							isFirst={isFirst}
+							dimmed={isDimmed}
+							onToggle={() =>
+								onToggleFolder(
+									item.path,
+									false,
+								)
+							}
+							onContextMenu={
+								onContextMenu
+							}
+						/>,
+					);
+				}
+			} else if (
 				item.kind === 'folder' &&
 				item.isExpanded
 			) {

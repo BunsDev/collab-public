@@ -16,7 +16,7 @@ import type { SortMode } from './types';
 
 export interface FlatItem {
 	id: string;
-	kind: 'folder' | 'file';
+	kind: 'folder' | 'file' | 'workspace';
 	level: number;
 	name: string;
 	path: string;
@@ -24,20 +24,30 @@ export interface FlatItem {
 	ctime?: string;
 	mtime?: string;
 	childCount?: number;
-}
-
-interface TrackedFolder {
-	path: string;
-	name: string;
+	workspacePath?: string;
 }
 
 function loadExpandedState(): Set<string> {
 	return new Set<string>();
 }
 
-function saveExpandedState(expanded: Set<string>) {
+function saveExpandedDirs(
+	expanded: Set<string>,
+	workspacePath?: string,
+) {
+	if (!workspacePath) return;
 	window.api.setWorkspacePref(
 		'expanded_dirs',
+		[...expanded],
+		workspacePath,
+	);
+}
+
+function saveExpandedWorkspaces(
+	expanded: Set<string>,
+) {
+	window.api.setPref(
+		'expanded_workspaces',
 		[...expanded],
 	);
 }
@@ -74,7 +84,9 @@ function flattenTree(
 	expanded: Set<string>,
 	level: number,
 	sortMode: SortMode,
+	levelOffset = 0,
 ): FlatItem[] {
+	const effectiveLevel = level + levelOffset;
 	const items: FlatItem[] = [];
 	const dirs = nodes.filter(
 		(n) => n.kind === 'folder',
@@ -88,7 +100,7 @@ function flattenTree(
 		items.push({
 			id: dir.path,
 			kind: 'folder',
-			level,
+			level: effectiveLevel,
 			name: dir.name,
 			path: dir.path,
 			isExpanded: isOpen,
@@ -104,6 +116,7 @@ function flattenTree(
 					expanded,
 					level + 1,
 					sortMode,
+					levelOffset,
 				),
 			);
 		}
@@ -114,7 +127,7 @@ function flattenTree(
 		items.push({
 			id: file.path,
 			kind: 'file',
-			level,
+			level: effectiveLevel,
 			name: file.name,
 			path: file.path,
 			ctime: file.ctime,
@@ -125,50 +138,123 @@ function flattenTree(
 	return items;
 }
 
+export function flattenTreeWithWorkspaces(
+	workspaces: { path: string; name: string }[],
+	trees: Map<string, TreeNode[]>,
+	expandedWorkspaces: Set<string>,
+	sortMode: SortMode,
+	expandedDirs: Set<string> = new Set(),
+): FlatItem[] {
+	const sorted = [...workspaces].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	);
+	const result: FlatItem[] = [];
+	for (const ws of sorted) {
+		const isOpen = expandedWorkspaces.has(ws.path);
+		result.push({
+			id: `ws:${ws.path}`,
+			kind: 'workspace',
+			level: 0,
+			name: ws.name,
+			path: ws.path,
+			isExpanded: isOpen,
+		});
+		if (isOpen) {
+			const tree = trees.get(ws.path) ?? [];
+			const flat = flattenTree(
+				tree,
+				expandedDirs,
+				0,
+				sortMode,
+				1,
+			);
+			for (const item of flat) {
+				result.push({
+					...item,
+					workspacePath: ws.path,
+				});
+			}
+		}
+	}
+	return result;
+}
+
+function findWorkspaceRoot(
+	dirPath: string,
+	workspaces: { path: string }[],
+): string | undefined {
+	return workspaces.find(
+		(ws) =>
+			dirPath === ws.path ||
+			isSubpath(ws.path, dirPath),
+	)?.path;
+}
+
 export function useFileTree(
-	folders: TrackedFolder[],
+	workspaces: { path: string; name: string }[],
 	sortMode: SortMode,
 ) {
 	const [dirContents, setDirContents] = useState<
 		Map<string, TreeNode[]>
 	>(new Map());
-	const [expanded, setExpanded] = useState<
+	const [expandedDirs, setExpandedDirs] = useState<
 		Set<string>
 	>(loadExpandedState);
+	const [expandedWorkspaces, setExpandedWorkspaces] =
+		useState<Set<string>>(loadExpandedState);
 	const dirContentsRef = useRef(dirContents);
 	dirContentsRef.current = dirContents;
 	const pendingLoadsRef = useRef(
 		new Map<string, Promise<TreeNode[]>>(),
 	);
 	const dirtyDirsRef = useRef(new Set<string>());
+	const workspacesRef = useRef(workspaces);
+	workspacesRef.current = workspaces;
 
 	useEffect(() => {
 		window.api
-			.getWorkspacePref('expanded_dirs')
-			.then((stored) => {
-				if (
+			.getPref('expanded_workspaces')
+			.then(async (stored) => {
+				const openPaths =
 					Array.isArray(stored) &&
 					stored.length > 0
-				) {
-					setExpanded(
-						new Set(stored as string[]),
-					);
-				} else {
-					setExpanded(
-						new Set(
-							folders.map((f) => f.path),
-						),
+						? (stored as string[])
+						: workspaces.map(
+								(ws) => ws.path,
+							);
+				setExpandedWorkspaces(
+					new Set(openPaths),
+				);
+
+				const allDirs: string[] = [];
+				await Promise.all(
+					openPaths.map(async (wsPath) => {
+						const dirs =
+							await window.api.getWorkspacePref(
+								'expanded_dirs',
+								wsPath,
+							);
+						if (Array.isArray(dirs)) {
+							allDirs.push(
+								...(dirs as string[]),
+							);
+						}
+					}),
+				);
+				if (allDirs.length > 0) {
+					setExpandedDirs(
+						new Set(allDirs),
 					);
 				}
 			})
 			.catch(() => {});
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- one-time mount; folder changes handled below
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- one-time mount
 	}, []);
 
-	const foldersKey = folders
-		.map((f) => f.path)
+	const workspacesKey = workspaces
+		.map((ws) => ws.path)
 		.join('\0');
-	const prevFoldersKeyRef = useRef(foldersKey);
+	const prevWorkspacesKeyRef = useRef(workspacesKey);
 
 	const loadDir = useCallback(
 		async (dirPath: string) => {
@@ -194,7 +280,10 @@ export function useFileTree(
 						}): TreeNode => {
 							const node: TreeNode = {
 								name: e.name,
-								path: joinPath(dirPath, e.name),
+								path: joinPath(
+									dirPath,
+									e.name,
+								),
 								kind: e.isDirectory
 									? 'folder'
 									: 'file',
@@ -203,7 +292,8 @@ export function useFileTree(
 							};
 
 							if (
-								e.fileCount !== undefined
+								e.fileCount !==
+								undefined
 							) {
 								node.fileCount =
 									e.fileCount;
@@ -213,7 +303,10 @@ export function useFileTree(
 						},
 					)
 					.sort(
-						(a: TreeNode, b: TreeNode) => {
+						(
+							a: TreeNode,
+							b: TreeNode,
+						) => {
 							const aIsDir =
 								a.kind === 'folder';
 							const bIsDir =
@@ -259,8 +352,12 @@ export function useFileTree(
 				pendingLoadsRef.current.delete(
 					dirPath,
 				);
-				if (dirtyDirsRef.current.delete(dirPath)) {
-					queueMicrotask(() => loadDir(dirPath));
+				if (
+					dirtyDirsRef.current.delete(dirPath)
+				) {
+					queueMicrotask(() =>
+						loadDir(dirPath),
+					);
 				}
 			}
 			})();
@@ -282,15 +379,19 @@ export function useFileTree(
 			const toReload = new Set<string>();
 			for (const dirPath of affectedDirs) {
 				if (
-					dirContentsRef.current.has(dirPath) ||
+					dirContentsRef.current.has(
+						dirPath,
+					) ||
 					pendingLoadsRef.current.has(dirPath)
 				) {
 					toReload.add(dirPath);
 				} else {
 					let parent = dirPath;
 					while (true) {
-						const nextParent = parentPath(parent);
-						if (nextParent === parent) break;
+						const nextParent =
+							parentPath(parent);
+						if (nextParent === parent)
+							break;
 						parent = nextParent;
 						if (
 							dirContentsRef.current.has(
@@ -319,12 +420,13 @@ export function useFileTree(
 
 	useEffect(() => {
 		const changed =
-			foldersKey !== prevFoldersKeyRef.current;
-		prevFoldersKeyRef.current = foldersKey;
+			workspacesKey !==
+			prevWorkspacesKeyRef.current;
+		prevWorkspacesKeyRef.current = workspacesKey;
 
 		if (changed) {
 			const roots = new Set(
-				folders.map((f) => f.path),
+				workspaces.map((ws) => ws.path),
 			);
 			setDirContents((prev) => {
 				const next = new Map<
@@ -333,61 +435,68 @@ export function useFileTree(
 				>();
 				for (const [k, v] of prev) {
 					for (const root of roots) {
-						if (
-							isSubpath(root, k)
-						) {
+						if (isSubpath(root, k)) {
 							next.set(k, v);
 						}
 					}
 				}
 				return next;
 			});
-			window.api
-				.getWorkspacePref('expanded_dirs')
-				.then((stored) => {
-					const valid = new Set<string>();
-					if (
-						Array.isArray(stored) &&
-						stored.length > 0
-					) {
-						for (const p of stored as string[]) {
-							for (const root of roots) {
-								if (
-									isSubpath(root, p)
-								) {
-									valid.add(p);
-								}
-							}
-						}
-					} else {
-						for (const root of roots) {
-							valid.add(root);
-						}
-					}
-					setExpanded(valid);
-				})
-				.catch(() => {
-					setExpanded(
-						new Set(
-							folders.map((f) => f.path),
-						),
-					);
-				});
+
+			setExpandedWorkspaces((prev) => {
+				const valid = new Set<string>();
+				for (const p of prev) {
+					if (roots.has(p)) valid.add(p);
+				}
+				if (valid.size === 0) return roots;
+				return valid;
+			});
 		}
 
-		for (const folder of folders) {
-			loadDir(folder.path);
+		for (const ws of workspaces) {
+			loadDir(ws.path);
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps -- folders is represented by foldersKey
-	}, [foldersKey, loadDir]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- workspaces is represented by workspacesKey
+	}, [workspacesKey, loadDir]);
 
 	useEffect(() => {
-		for (const dirPath of expanded) {
+		for (const dirPath of expandedDirs) {
 			if (!dirContents.has(dirPath)) {
 				loadDir(dirPath);
 			}
 		}
-	}, [expanded, dirContents, loadDir]);
+	}, [expandedDirs, dirContents, loadDir]);
+
+	const perWorkspaceTrees = useMemo(() => {
+		const trees = new Map<string, TreeNode[]>();
+		for (const ws of workspaces) {
+			const children =
+				dirContents.get(ws.path) ?? [];
+			const hydrated = children.map((child) =>
+				hydrateNode(child, dirContents),
+			);
+			trees.set(ws.path, hydrated);
+		}
+		return trees;
+	}, [workspaces, dirContents]);
+
+	const flatItems = useMemo(
+		() =>
+			flattenTreeWithWorkspaces(
+				workspaces,
+				perWorkspaceTrees,
+				expandedWorkspaces,
+				sortMode,
+				expandedDirs,
+			),
+		[
+			workspaces,
+			perWorkspaceTrees,
+			expandedWorkspaces,
+			sortMode,
+			expandedDirs,
+		],
+	);
 
 	const expandRecursive = useCallback(
 		async (rootPath: string) => {
@@ -409,10 +518,14 @@ export function useFileTree(
 
 			await collect(rootPath);
 
-			setExpanded((prev) => {
+			const wsRoot = findWorkspaceRoot(
+				rootPath,
+				workspacesRef.current,
+			);
+			setExpandedDirs((prev) => {
 				const next = new Set(prev);
 				for (const p of toExpand) next.add(p);
-				saveExpandedState(next);
+				saveExpandedDirs(next, wsRoot);
 				return next;
 			});
 		},
@@ -420,11 +533,62 @@ export function useFileTree(
 	);
 
 	const toggleExpand = useCallback(
-		(path: string, recursive = false) => {
-			const isOpen = expanded.has(path);
+		(
+			path: string,
+			recursive = false,
+			kind?: 'workspace' | 'folder',
+		) => {
+			if (kind === 'workspace') {
+				const wasCollapsed =
+					!expandedWorkspaces.has(path);
+				setExpandedWorkspaces((prev) => {
+					const next = new Set(prev);
+					if (next.has(path)) {
+						next.delete(path);
+					} else {
+						next.add(path);
+					}
+					saveExpandedWorkspaces(next);
+					return next;
+				});
+				if (wasCollapsed) {
+					if (!dirContents.has(path)) {
+						loadDir(path);
+					}
+					window.api
+						.getWorkspacePref(
+							'expanded_dirs',
+							path,
+						)
+						.then((dirs) => {
+							if (Array.isArray(dirs)) {
+								setExpandedDirs(
+									(prev) => {
+										const next =
+											new Set(
+												prev,
+											);
+										for (const d of dirs as string[]) {
+											next.add(d);
+										}
+										return next;
+									},
+								);
+							}
+						})
+						.catch(() => {});
+				}
+				return;
+			}
+
+			const isOpen = expandedDirs.has(path);
+			const wsRoot = findWorkspaceRoot(
+				path,
+				workspacesRef.current,
+			);
 
 			if (isOpen) {
-				setExpanded((prev) => {
+				setExpandedDirs((prev) => {
 					const next = new Set(prev);
 					if (recursive) {
 						for (const p of prev) {
@@ -438,16 +602,16 @@ export function useFileTree(
 					} else {
 						next.delete(path);
 					}
-					saveExpandedState(next);
+					saveExpandedDirs(next, wsRoot);
 					return next;
 				});
 			} else if (recursive) {
 				expandRecursive(path);
 			} else {
-				setExpanded((prev) => {
+				setExpandedDirs((prev) => {
 					const next = new Set(prev);
 					next.add(path);
-					saveExpandedState(next);
+					saveExpandedDirs(next, wsRoot);
 					return next;
 				});
 				if (!dirContents.has(path)) {
@@ -458,101 +622,90 @@ export function useFileTree(
 		[
 			dirContents,
 			loadDir,
-			expanded,
+			expandedDirs,
+			expandedWorkspaces,
 			expandRecursive,
 		],
 	);
 
-	const tree = useMemo(() => {
-		const rootNodes: TreeNode[] = folders
-			.map((f): TreeNode => {
-				const children =
-					dirContents.get(f.path) ?? [];
-				const hydratedChildren = children.map(
-					(child) =>
-						hydrateNode(child, dirContents),
-				);
-				return {
-					name: f.name,
-					path: f.path,
-					kind: 'folder',
-					ctime: '',
-					mtime: '',
-					children: hydratedChildren,
-				};
-			})
-			.sort((a, b) =>
-				a.name.localeCompare(b.name),
-			);
-		return rootNodes;
-	}, [folders, dirContents]);
-
-	const flatItems = useMemo(
-		() => flattenTree(tree, expanded, 0, sortMode),
-		[tree, expanded, sortMode],
-	);
-
 	const expandFolder = useCallback(
 		(path: string) => {
-			if (expanded.has(path)) return;
-			setExpanded((prev) => {
+			if (expandedDirs.has(path)) return;
+			const wsRoot = findWorkspaceRoot(
+				path,
+				workspacesRef.current,
+			);
+			setExpandedDirs((prev) => {
 				const next = new Set(prev);
 				next.add(path);
-				saveExpandedState(next);
+				saveExpandedDirs(next, wsRoot);
 				return next;
 			});
 			if (!dirContents.has(path)) {
 				loadDir(path);
 			}
 		},
-		[expanded, dirContents, loadDir],
+		[expandedDirs, dirContents, loadDir],
 	);
 
 	const expandAncestors = useCallback(
 		(filePath: string) => {
-			const roots = folders.map((f) => f.path);
-			const root = roots.find(
-				(r) => isSubpath(r, filePath),
+			const roots = workspaces.map(
+				(ws) => ws.path,
+			);
+			const root = roots.find((r) =>
+				isSubpath(r, filePath),
 			);
 			if (!root) return;
 
-			const relative = filePath.slice(root.length + 1);
+			const relative = filePath.slice(
+				root.length + 1,
+			);
 			const parts = splitPathSegments(relative);
 			parts.pop();
 
-			const toExpand: string[] = [root];
+			const dirsToExpand: string[] = [];
 			let current = root;
 			for (const part of parts) {
 				current = joinPath(current, part);
-				toExpand.push(current);
+				dirsToExpand.push(current);
 			}
 
-			setExpanded((prev) => {
-				if (
-					toExpand.every((p) => prev.has(p))
-				)
-					return prev;
+			setExpandedWorkspaces((prev) => {
+				if (prev.has(root)) return prev;
 				const next = new Set(prev);
-				for (const p of toExpand) next.add(p);
-				saveExpandedState(next);
+				next.add(root);
+				saveExpandedWorkspaces(next);
 				return next;
 			});
 
-			for (const p of toExpand) {
+			setExpandedDirs((prev) => {
 				if (
-					!dirContentsRef.current.has(p)
-				) {
+					dirsToExpand.every((p) =>
+						prev.has(p),
+					)
+				)
+					return prev;
+				const next = new Set(prev);
+				for (const p of dirsToExpand)
+					next.add(p);
+				saveExpandedDirs(next, root);
+				return next;
+			});
+
+			for (const p of dirsToExpand) {
+				if (!dirContentsRef.current.has(p)) {
 					loadDir(p);
 				}
 			}
 		},
-		[folders, loadDir],
+		[workspaces, loadDir],
 	);
 
 	return {
-		tree,
 		flatItems,
-		expanded,
+		expandedDirs,
+		expandedWorkspaces,
 		toggleExpand,
 		expandFolder,
 		expandAncestors,

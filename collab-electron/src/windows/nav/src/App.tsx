@@ -7,7 +7,6 @@ import {
 	useDragDrop,
 	sortModeOrder,
 	TREE_SORT_MODE_STORAGE_KEY,
-	FEED_SORT_MODE_STORAGE_KEY,
 	ENABLE_GRAPH_TILES,
 } from '@collab/components/TreeView';
 import type {
@@ -15,13 +14,6 @@ import type {
 	FlatItem,
 	SearchSortControlsHandle,
 } from '@collab/components/TreeView';
-import {
-	TreeView as TreeViewIcon,
-	List,
-} from '@phosphor-icons/react';
-import { SourcesFeed } from '@collab/components/SourcesFeed';
-import '@collab/components/SourcesFeed/SourcesFeed.css';
-import type { AppConfig } from '@collab/shared/types';
 import { displayBasename, parentPath } from '@collab/shared/path-utils';
 
 const PLATFORM = window.api.getPlatform();
@@ -150,10 +142,8 @@ function ImportWebArticleModal({
 export default function App() {
 	const treeSearchRef =
 		useRef<SearchSortControlsHandle>(null);
-	const feedSearchRef =
-		useRef<SearchSortControlsHandle>(null);
-	const [config, setConfig] =
-		useState<AppConfig | null>(null);
+	const [workspacePaths, setWorkspacePaths] =
+		useState<string[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(
 		null,
@@ -165,49 +155,25 @@ export default function App() {
 		folderPath: string;
 	} | null>(null);
 
-	type NavViewMode = 'tree' | 'feed';
-	const VIEW_MODE_KEY = 'collab:nav-view-mode';
-	const [viewMode, setViewMode] =
-		useState<NavViewMode>('tree');
-
-	useEffect(() => {
-		window.api.getPref(VIEW_MODE_KEY).then((v) => {
-			if (v === 'feed') setViewMode('feed');
-		});
-	}, []);
-
-	const workspacePath =
-		config?.workspaces?.[config?.active_workspace] ?? '';
-	const folders = useMemo(
+	const workspaces = useMemo(
 		() =>
-			workspacePath
-				? [
-						{
-							path: workspacePath,
-							name: displayBasename(workspacePath),
-						},
-					]
-				: [],
-		[workspacePath],
+			workspacePaths.map((p) => ({
+				path: p,
+				name: displayBasename(p),
+			})),
+		[workspacePaths],
 	);
+	const workspacePathsRef = useRef(workspacePaths);
+	workspacePathsRef.current = workspacePaths;
 
 	const [treeSortMode, setTreeSortMode] =
 		useState<SortMode>('alpha-desc');
-	const [feedSortMode, setFeedSortMode] =
-		useState<SortMode>('alpha-desc');
-	const sortMode =
-		viewMode === 'feed'
-			? feedSortMode
-			: treeSortMode;
+	const sortMode = treeSortMode;
 
 	const focusActiveSearch = useCallback(() => {
 		window.focus();
-		if (viewMode === 'feed') {
-			feedSearchRef.current?.focusSearch();
-			return;
-		}
 		treeSearchRef.current?.focusSearch();
-	}, [viewMode]);
+	}, []);
 
 	useEffect(() => {
 		window.api
@@ -222,18 +188,6 @@ export default function App() {
 					setTreeSortMode(v as SortMode);
 				}
 			});
-		window.api
-			.getPref(FEED_SORT_MODE_STORAGE_KEY)
-			.then((v) => {
-				if (
-					typeof v === 'string' &&
-					sortModeOrder.includes(
-						v as SortMode,
-					)
-				) {
-					setFeedSortMode(v as SortMode);
-				}
-			});
 	}, []);
 
 	const {
@@ -241,7 +195,7 @@ export default function App() {
 		toggleExpand,
 		expandFolder,
 		expandAncestors,
-	} = useFileTree(folders, sortMode);
+	} = useFileTree(workspaces, sortMode);
 	const expandAncestorsRef = useRef(expandAncestors);
 	expandAncestorsRef.current = expandAncestors;
 
@@ -249,7 +203,7 @@ export default function App() {
 		window.api
 			.getConfig()
 			.then((cfg) => {
-				setConfig(cfg);
+				setWorkspacePaths(cfg.workspaces);
 				setLoading(false);
 			})
 			.catch((err) => {
@@ -259,36 +213,29 @@ export default function App() {
 	}, []);
 
 	useEffect(() => {
-		return window.api.onWorkspaceChanged(
-			(newPath) => {
-				setConfig((prev) => {
-					if (!prev) return prev;
-					const idx =
-						prev.workspaces.indexOf(newPath);
-					if (idx !== -1) {
-						return {
-							...prev,
-							active_workspace: idx,
-						};
-					}
-					return {
-						...prev,
-						workspaces: [
-							...prev.workspaces,
-							newPath,
-						],
-						active_workspace:
-							prev.workspaces.length,
-					};
-				});
-			},
-		);
-	}, []);
-
-	useEffect(() => {
-		window.api.getSelectedFile().then((saved) => {
-			if (saved) setSelectedPath(saved);
-		});
+		const cleanupAdd =
+			window.api.onWorkspaceAdded((path: string) => {
+				setWorkspacePaths((prev) =>
+					prev.includes(path)
+						? prev
+						: [...prev, path],
+				);
+			});
+		const cleanupRemove =
+			window.api.onWorkspaceRemoved((path: string) => {
+				setWorkspacePaths((prev) =>
+					prev.filter((p) => p !== path),
+				);
+				setSelectedPath((current) =>
+					current?.startsWith(path + '/')
+						? null
+						: current,
+				);
+			});
+		return () => {
+			cleanupAdd();
+			cleanupRemove();
+		};
 	}, []);
 
 	useEffect(() => {
@@ -404,10 +351,11 @@ export default function App() {
 
 	const deleteFile = useCallback(
 		async (path: string) => {
-			if (path === workspacePath) return;
+			if (workspacePathsRef.current.includes(path))
+				return;
 			await window.api.trashFile(path);
 		},
-		[workspacePath],
+		[],
 	);
 
 	const selectFolder = useCallback(
@@ -421,21 +369,6 @@ export default function App() {
 		(path: string | null) => {
 			setSelectedPath(path);
 			window.api.selectFile(path);
-		},
-		[],
-	);
-
-	const handleFeedSelect = useCallback(
-		(path: string) => {
-			selectFile(path);
-		},
-		[selectFile],
-	);
-
-	const switchViewMode = useCallback(
-		(mode: NavViewMode) => {
-			setViewMode(mode);
-			window.api.setPref(VIEW_MODE_KEY, mode);
 		},
 		[],
 	);
@@ -478,15 +411,7 @@ export default function App() {
 	);
 
 	const cycleSortMode = useCallback(() => {
-		const setter =
-			viewMode === 'feed'
-				? setFeedSortMode
-				: setTreeSortMode;
-		const storageKey =
-			viewMode === 'feed'
-				? FEED_SORT_MODE_STORAGE_KEY
-				: TREE_SORT_MODE_STORAGE_KEY;
-		setter((currentMode) => {
+		setTreeSortMode((currentMode) => {
 			const currentIndex =
 				sortModeOrder.indexOf(currentMode);
 			const nextIndex =
@@ -496,12 +421,12 @@ export default function App() {
 				sortModeOrder[nextIndex] ??
 				currentMode;
 			window.api.setPref(
-				storageKey,
+				TREE_SORT_MODE_STORAGE_KEY,
 				newMode,
 			);
 			return newMode;
 		});
-	}, [viewMode]);
+	}, []);
 
 	const handlePlusClick = useCallback(
 		async (folderPath: string) => {
@@ -533,6 +458,7 @@ export default function App() {
 			item: FlatItem | null,
 		) => {
 			const ms = multiSelectRef.current;
+			const wsPaths = workspacePathsRef.current;
 			const multiSelected =
 				ms.selected.size > 1;
 
@@ -557,9 +483,48 @@ export default function App() {
 						label: 'New Folder',
 					},
 				];
+			} else if (item.kind === 'workspace') {
+				menuItems = [
+					{ id: 'new-file', label: 'New File' },
+					{
+						id: 'new-folder',
+						label: 'New Folder',
+					},
+					{
+						id: 'import-web-article',
+						label: 'Import Web Article',
+					},
+					{ id: 'separator', label: '' },
+					...(ENABLE_GRAPH_TILES
+						? [
+								{
+									id: 'open-graph',
+									label: 'Open as Graph',
+								},
+							]
+						: []),
+					{
+						id: 'copy-path',
+						label: 'Copy Filepath',
+					},
+					{
+						id: 'reveal-in-finder',
+						label: REVEAL_LABEL,
+					},
+					{
+						id: 'terminal',
+						label: 'Open in Terminal',
+					},
+					{ id: 'separator', label: '' },
+					{
+						id: 'remove-workspace',
+						label: 'Remove Workspace',
+					},
+				];
 			} else if (item.kind === 'folder') {
-				const isRoot =
-					item.path === workspacePath;
+				const isRoot = wsPaths.includes(
+					item.path,
+				);
 				menuItems = [
 					{ id: 'new-file', label: 'New File' },
 					{
@@ -626,8 +591,9 @@ export default function App() {
 			if (!action) return;
 
 			const parentFolder = !item
-				? workspacePath
-				: item.kind === 'folder'
+				? wsPaths[0] ?? ''
+				: item.kind === 'workspace' ||
+						item.kind === 'folder'
 					? item.path
 					: parentPath(item.path);
 
@@ -660,13 +626,17 @@ export default function App() {
 				case 'delete':
 					if (multiSelected) {
 						for (const path of ms.selected) {
-							if (path === workspacePath) continue;
+							if (wsPaths.includes(path))
+								continue;
 							await window.api.trashFile(
 								path,
 							);
 						}
 						ms.clearSelection();
-					} else if (item && item.path !== workspacePath) {
+					} else if (
+						item &&
+						!wsPaths.includes(item.path)
+					) {
 						await window.api.trashFile(
 							item.path,
 						);
@@ -691,14 +661,21 @@ export default function App() {
 				case 'terminal':
 					if (item)
 						window.api.openInTerminal(
-							item.kind === 'folder'
+							item.kind === 'folder' ||
+								item.kind === 'workspace'
 								? item.path
 								: parentPath(item.path),
 						);
 					break;
+				case 'remove-workspace':
+					if (item && item.kind === 'workspace')
+						await window.api.workspaceRemoveByPath(
+							item.path,
+						);
+					break;
 			}
 		},
-		[workspacePath, expandFolder],
+		[expandFolder],
 	);
 
 	const selectedPathRef = useRef(selectedPath);
@@ -708,15 +685,6 @@ export default function App() {
 
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
-			if (
-				(e.metaKey || e.ctrlKey) &&
-				e.key.toLowerCase() === 'k'
-			) {
-				e.preventDefault();
-				focusActiveSearch();
-				return;
-			}
-
 			const active = document.activeElement;
 			if (
 				active?.tagName === 'INPUT' ||
@@ -747,8 +715,10 @@ export default function App() {
 				ms.selected.size > 0
 			) {
 				e.preventDefault();
+				const wsPaths =
+					workspacePathsRef.current;
 				for (const path of ms.selected) {
-					if (path === workspacePath) continue;
+					if (wsPaths.includes(path)) continue;
 					void window.api.trashFile(path);
 				}
 				ms.clearSelection();
@@ -773,41 +743,19 @@ export default function App() {
 				'keydown',
 				handler,
 			);
-	}, [focusActiveSearch, selectFile, workspacePath]);
+	}, [focusActiveSearch, selectFile]);
 
-	const renderViewModeToggle = () => (
-		<div className="nav-view-toggle">
-			<button
-				type="button"
-				className={`nav-view-toggle-button${viewMode === 'tree' ? ' active' : ''}`}
-				onClick={() => switchViewMode('tree')}
-				title="Tree view"
-			>
-				<TreeViewIcon
-					size={14}
-					weight={
-						viewMode === 'tree'
-							? 'fill'
-							: 'regular'
-					}
-				/>
-			</button>
-			<button
-				type="button"
-				className={`nav-view-toggle-button${viewMode === 'feed' ? ' active' : ''}`}
-				onClick={() => switchViewMode('feed')}
-				title="Feed view"
-			>
-				<List
-					size={14}
-					weight={
-						viewMode === 'feed'
-							? 'bold'
-							: 'regular'
-					}
-				/>
-			</button>
-		</div>
+	const handleToggleFolder = useCallback(
+		(path: string, recursive: boolean) => {
+			const isWorkspace =
+				workspacePathsRef.current.includes(path);
+			toggleExpand(
+				path,
+				recursive,
+				isWorkspace ? 'workspace' : 'folder',
+			);
+		},
+		[toggleExpand],
 	);
 
 	return (
@@ -826,117 +774,85 @@ export default function App() {
 
 				{!loading &&
 					!error &&
-					workspacePath && (
-					<>
-						<div style={{ display: viewMode === 'tree' ? 'contents' : 'none' }}>
-							<TreeView
-								flatItems={flatItems}
-								selectedPath={
-									selectedPath
-								}
-								selectedPaths={
-									multiSelect.selected
-								}
-								onItemClick={
-									multiSelect.handleClick
-								}
-								onToggleFolder={
-									toggleExpand
-								}
-								onCreateFile={
-									createFileInFolder
-								}
-								onPlusClick={
-									handlePlusClick
-								}
-								onDeleteFile={deleteFile}
-								sortMode={sortMode}
-								onCycleSortMode={
-									cycleSortMode
-								}
-								leadingContent={renderViewModeToggle()}
-								renamingPath={
-									inlineRename.renamingPath
-								}
-								renameValue={
-									inlineRename.renameValue
-								}
-								renameInputRef={
-									inlineRename.inputRef
-								}
-								onRenameChange={
-									inlineRename.setRenameValue
-								}
-								onRenameConfirm={
-									inlineRename.confirmRename
-								}
-								onRenameCancel={
-									inlineRename.cancelRename
-								}
-								dropTargetPath={
-									dragDrop.dropTargetPath
-								}
-								onDragStart={
-									stableDragStart
-								}
-								onDragOver={
-									dragDrop.handleDragOver
-								}
-								onDragLeave={
-									dragDrop.handleDragLeave
-								}
-								onDrop={
-									dragDrop.handleDrop
-								}
-								onDragEnd={
-									dragDrop.handleDragEnd
-								}
-								onSelectFolder={
-									selectFolder
-								}
-								onContextMenu={
-									handleContextMenu
-								}
-								workspacePath={
-									workspacePath
-								}
-								cursorPath={
-									multiSelect.cursor
-								}
-								isActive={viewMode === 'tree'}
-								searchRef={treeSearchRef}
-							/>
-						</div>
-						<div style={{ display: viewMode === 'feed' ? 'contents' : 'none' }}>
-							<SourcesFeed
-								workspacePath={
-									workspacePath
-								}
-								selectedPath={
-									selectedPath
-								}
-								sortMode={sortMode}
-								isActive={viewMode === 'feed'}
-								onSelectFile={
-									handleFeedSelect
-								}
-								onDeleteFile={
-									deleteFile
-								}
-								onCycleSortMode={
-									cycleSortMode
-								}
-								onDragStart={stableDragStart}
-								leadingContent={renderViewModeToggle()}
-								searchRef={feedSearchRef}
-							/>
-						</div>
-					</>
+					workspacePaths.length > 0 && (
+					<TreeView
+						flatItems={flatItems}
+						selectedPath={
+							selectedPath
+						}
+						selectedPaths={
+							multiSelect.selected
+						}
+						onItemClick={
+							multiSelect.handleClick
+						}
+						onToggleFolder={
+							handleToggleFolder
+						}
+						onCreateFile={
+							createFileInFolder
+						}
+						onPlusClick={
+							handlePlusClick
+						}
+						onDeleteFile={deleteFile}
+						sortMode={sortMode}
+						onCycleSortMode={
+							cycleSortMode
+						}
+						renamingPath={
+							inlineRename.renamingPath
+						}
+						renameValue={
+							inlineRename.renameValue
+						}
+						renameInputRef={
+							inlineRename.inputRef
+						}
+						onRenameChange={
+							inlineRename.setRenameValue
+						}
+						onRenameConfirm={
+							inlineRename.confirmRename
+						}
+						onRenameCancel={
+							inlineRename.cancelRename
+						}
+						dropTargetPath={
+							dragDrop.dropTargetPath
+						}
+						onDragStart={
+							stableDragStart
+						}
+						onDragOver={
+							dragDrop.handleDragOver
+						}
+						onDragLeave={
+							dragDrop.handleDragLeave
+						}
+						onDrop={
+							dragDrop.handleDrop
+						}
+						onDragEnd={
+							dragDrop.handleDragEnd
+						}
+						onSelectFolder={
+							selectFolder
+						}
+						onContextMenu={
+							handleContextMenu
+						}
+						cursorPath={
+							multiSelect.cursor
+						}
+						isActive
+						searchRef={treeSearchRef}
+					/>
 				)}
 
 				{!loading &&
 					!error &&
-					!workspacePath && (
+					workspacePaths.length === 0 && (
 						<div className="empty-state">
 							<p>
 								No workspace selected. Open
