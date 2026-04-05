@@ -913,7 +913,7 @@ body.platform-win {
 }
 
 .canvas-tile[data-tile-type="term"] .tile-content {
-	padding: 0 8px;
+	padding: 0 2px 0 12px;
 }
 
 /* Tile webviews are non-interactive by default */

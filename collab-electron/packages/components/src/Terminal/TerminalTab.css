@@ -11,6 +11,10 @@
 	background: transparent !important;
 }
 
+.terminal-tab .xterm-decoration-overview-ruler {
+	display: none !important;
+}
+
 /* Scrollbar styling for the xterm viewport */
 .terminal-tab .xterm-viewport::-webkit-scrollbar {
 	width: 7px;

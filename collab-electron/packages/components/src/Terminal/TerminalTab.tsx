@@ -47,6 +47,7 @@ function TerminalTab({
 			allowProposedApi: true,
 			allowTransparency: true,
 			macOptionIsMeta: false,
+			overviewRuler: { width: 8 },
 		});
 
 		const fit = new FitAddon();
