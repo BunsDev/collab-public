@@ -364,6 +364,7 @@ function buildAppMenu(): void {
         {
           label: "Find",
           accelerator: "CommandOrControl+K",
+          registerAccelerator: false,
           click: () => sendShortcut("focus-file-search"),
         },
       ],

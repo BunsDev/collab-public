@@ -198,6 +198,7 @@ async function init() {
 				});
 			} else {
 				singletonViewer.send("nav-visibility", false);
+				canvasEl.focus();
 			}
 		},
 		onModeChanged(mode) {
@@ -299,6 +300,8 @@ async function init() {
 					agentTermWebview.webview.focus();
 					noteSurfaceFocus("agent");
 				}
+			} else {
+				canvasEl.focus();
 			}
 		},
 	});
