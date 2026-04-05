@@ -126,13 +126,13 @@ const FolderRow = React.memo(function FolderRow({
 }: FolderRowProps) {
 	const style: React.CSSProperties = isWorkspace
 		? {
-			paddingLeft: '8px',
+			paddingLeft: '4px',
 			borderTop: isFirstWorkspace
 				? 'none'
-				: '1px solid var(--border-subtle, var(--border))',
+				: '1px solid color-mix(in srgb, var(--foreground) 8%, transparent)',
 		}
 		: {
-			paddingLeft: `${item.level * 16 + 8}px`,
+			paddingLeft: `${item.level * 14}px`,
 		};
 
 	const className = `collection-tree-row collection-folder-row${isDropTarget ? ' drop-target' : ''}${isWorkspace ? ' workspace-folder-row' : ''}${dimmed ? ' dimmed' : ''}`;
@@ -324,7 +324,7 @@ export const FileRow = React.memo(
 				data-item-id={item.path}
 				className={`collection-tree-row collection-item-row${isSelected ? ' isFocused' : ''}${isMultiSelected ? ' isMultiSelected' : ''}`}
 				style={{
-					paddingLeft: `${item.level * 16 + 8}px`,
+					paddingLeft: `${item.level * 14}px`,
 				}}
 				draggable
 				onDragStart={(e) =>
@@ -914,7 +914,7 @@ export const TreeView: React.FC<
 					item.level + 1,
 				);
 				const guideStyle = {
-					'--guide-left': `${item.level * 16 + 14}px`,
+					'--guide-left': `${item.level * 14 + 6}px`,
 					'--guide-top': `${folderRowHeight}px`,
 					'--guide-z': 9 - item.level,
 				} as React.CSSProperties;

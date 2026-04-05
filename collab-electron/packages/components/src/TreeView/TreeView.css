@@ -441,6 +441,7 @@
 
 .workspace-group {
 	position: relative;
+	margin-bottom: 8px;
 }
 
 .workspace-folder-row {
