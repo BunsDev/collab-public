@@ -958,11 +958,6 @@ async function init() {
 					"focus-search",
 				);
 			});
-		} else if (action === "focus-tile-search") {
-			panelManager.setMode("tiles");
-			requestAnimationFrame(() => {
-				tileListWebview.send("focus-search");
-			});
 		} else if (action === "add-workspace") {
 			window.shellApi.workspaceAdd();
 		} else if (action === "new-tile") {

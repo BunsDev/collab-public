@@ -69,7 +69,6 @@ function TileEntryRow({
 function App() {
   const [entries, setEntries] = useState<TileEntry[]>([]);
   const [focusedId, setFocusedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState("");
 
   useEffect(() => {
     const cleanup = window.api.onTileListMessage(
@@ -101,14 +100,8 @@ function App() {
       },
     );
 
-    const focusCleanup = window.api.onFocusSearch(() => {
-      const input = document.querySelector<HTMLInputElement>(".tile-search-input");
-      input?.focus();
-    });
-
     return () => {
       cleanup();
-      focusCleanup();
     };
   }, []);
 
@@ -139,26 +132,9 @@ function App() {
     return () => document.removeEventListener("keydown", handler);
   }, [entries, focusedId, handleClick]);
 
-  const filtered = filter
-    ? entries.filter(
-        (e) =>
-          e.title.toLowerCase().includes(filter.toLowerCase()) ||
-          e.description.toLowerCase().includes(filter.toLowerCase()),
-      )
-    : entries;
-
   return (
     <div className="tile-list">
-      <div className="tile-search">
-        <input
-          type="text"
-          className="tile-search-input"
-          placeholder="Search tiles..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </div>
-      {filtered.map((entry) => (
+      {entries.map((entry) => (
         <TileEntryRow
           key={entry.id}
           entry={entry}
@@ -167,9 +143,9 @@ function App() {
           onDoubleClick={() => handleDoubleClick(entry.id)}
         />
       ))}
-      {filtered.length === 0 && (
+      {entries.length === 0 && (
         <div className="tile-empty">
-          {filter ? "No matching tiles" : "No tiles on canvas"}
+          No tiles on canvas
         </div>
       )}
     </div>
