@@ -662,8 +662,8 @@ body.platform-win {
 	position: absolute;
 	bottom: 12px;
 	right: 14px;
-	width: 200px;
-	height: 140px;
+	width: 160px;
+	height: 112px;
 	z-index: 105;
 	background: rgba(140, 140, 140, 0.25);
 	border: none;

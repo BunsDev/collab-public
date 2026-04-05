@@ -1,5 +1,5 @@
-const MINIMAP_W = 200;
-const MINIMAP_H = 140;
+const MINIMAP_W = 160;
+const MINIMAP_H = 112;
 const PADDING_RATIO = 0.1;
 const MIN_TILE_W = 4;
 const MIN_TILE_H = 3;
@@ -58,9 +58,8 @@ export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, 
 
 		const vw = canvasEl.clientWidth;
 		const vh = canvasEl.clientHeight;
-		const zoom = viewportState.zoom;
-		const minW = MIN_EXTENT_FACTOR * (vw / zoom);
-		const minH = MIN_EXTENT_FACTOR * (vh / zoom);
+		const minW = MIN_EXTENT_FACTOR * vw;
+		const minH = MIN_EXTENT_FACTOR * vh;
 
 		if (bw < minW) {
 			const cx = (minX + maxX) / 2;
@@ -197,7 +196,7 @@ export function createMinimap({ viewportEl, wrapperEl, viewportState, getTiles, 
 
 		if (shouldShow && !isShown) {
 			wrapperEl.classList.add("visible");
-			canvasEl.style.setProperty("--zoom-indicator-bottom", "164px");
+			canvasEl.style.setProperty("--zoom-indicator-bottom", "136px");
 		} else if (!shouldShow && isShown) {
 			wrapperEl.classList.remove("visible");
 			canvasEl.style.setProperty("--zoom-indicator-bottom", "12px");
