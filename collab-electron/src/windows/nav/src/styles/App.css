@@ -140,13 +140,13 @@ button {
 	width: 100%;
 	gap: 4px;
 	font-family: var(--font-mono);
-	font-size: 11px;
+	font-size: 0.8rem;
 	font-weight: 400;
 	color: var(--muted-foreground);
 	background: none;
 	border: 1px dashed color-mix(in srgb, var(--foreground) 20%, transparent);
-	border-radius: 0;
-	padding: 3px 10px;
+	border-radius: 999px;
+	padding: 6px 10px;
 	cursor: pointer;
 	line-height: 1.4;
 	transition: color 0.15s ease, border-color 0.15s ease;
@@ -154,6 +154,7 @@ button {
 
 .ws-add-btn:hover {
 	color: var(--foreground);
+	border-color: var(--foreground);
 }
 
 .ws-add-btn:active {
