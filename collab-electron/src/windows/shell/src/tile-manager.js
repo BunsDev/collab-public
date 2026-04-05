@@ -23,6 +23,7 @@ export function createTileManager({
 	onSaveDebounced, onSaveImmediate,
 	onNoteSurfaceFocus, onFocusSurface,
 	onTerminalSessionCreated,
+	onTerminalCwdChanged,
 	onTerminalTileClosed,
 	onTileFocused,
 	onTileDblClick,
@@ -237,6 +238,9 @@ export function createTileManager({
 					tile.autoTitle = cwd;
 					updateTileTitle(tileDOMs.get(tile.id), tile);
 					saveCanvasDebounced();
+					if (onTerminalCwdChanged) {
+						onTerminalCwdChanged(cwd);
+					}
 				}
 			}
 		});
@@ -748,6 +752,19 @@ export function createTileManager({
 		}
 	}
 
+	function renameTile(id, newTitle) {
+		const t = getTile(id);
+		if (!t) return;
+		if (newTitle === "") {
+			delete t.userTitle;
+		} else {
+			t.userTitle = newTitle;
+		}
+		const d = tileDOMs.get(id);
+		if (d) updateTileTitle(d, t);
+		saveCanvasImmediate();
+	}
+
 	return {
 		createCanvasTile,
 		closeCanvasTile,
@@ -767,6 +784,7 @@ export function createTileManager({
 		getTileDOMs: () => tileDOMs,
 		getFocusedTileId: () => focusedTileId,
 		setFocusedTileId: (id) => { focusedTileId = id; },
+		renameTile,
 		updateTileForRename,
 		closeTilesForDeletedPaths,
 		broadcastToTileWebviews,

@@ -7,7 +7,7 @@ import {
   Code,
   Image,
 } from "@phosphor-icons/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import "./App.css";
 
 type TileType = "term" | "note" | "code" | "image" | "graph" | "browser";
@@ -43,19 +43,40 @@ const TYPE_ICONS: Record<TileType, { icon: Icon; color: string }> = {
 function TileEntryRow({
   entry,
   focused,
+  isRenaming,
+  renameValue,
   onClick,
   onDoubleClick,
+  onContextMenu,
+  onRenameChange,
+  onRenameConfirm,
+  onRenameCancel,
 }: {
   entry: TileEntry;
   focused: boolean;
+  isRenaming: boolean;
+  renameValue: string;
   onClick: () => void;
   onDoubleClick: () => void;
+  onContextMenu: (e: React.MouseEvent) => void;
+  onRenameChange: (value: string) => void;
+  onRenameConfirm: () => void;
+  onRenameCancel: () => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isRenaming) {
+      inputRef.current?.select();
+    }
+  }, [isRenaming]);
+
   return (
     <div
       className={`tile-entry${focused ? " focused" : ""}`}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      onContextMenu={onContextMenu}
     >
       <div className="tile-icon">
         {(() => {
@@ -65,7 +86,27 @@ function TileEntryRow({
           return <IconComp size={14} weight="regular" style={{ color }} />;
         })()}
       </div>
-      <div className="tile-title">{entry.title}</div>
+      {isRenaming ? (
+        <input
+          ref={inputRef}
+          className="tile-rename-input"
+          value={renameValue}
+          onChange={(e) => onRenameChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              onRenameConfirm();
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              onRenameCancel();
+            }
+          }}
+          onBlur={onRenameConfirm}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <div className="tile-title">{entry.title}</div>
+      )}
     </div>
   );
 }
@@ -73,6 +114,8 @@ function TileEntryRow({
 function App() {
   const [entries, setEntries] = useState<TileEntry[]>([]);
   const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     const cleanup = window.api.onTileListMessage(
@@ -119,8 +162,41 @@ function App() {
     window.api.sendToHost("tile-list:focus-tile", id);
   }, []);
 
+  const handleContextMenu = useCallback(
+    async (id: string, e: React.MouseEvent) => {
+      e.preventDefault();
+      const selected = await window.api.showContextMenu([
+        { id: "rename", label: "Rename" },
+      ]);
+      if (selected === "rename") {
+        const entry = entries.find((en) => en.id === id);
+        if (entry) {
+          setRenameValue(entry.title);
+          setRenamingId(id);
+        }
+      }
+    },
+    [entries],
+  );
+
+  const commitRename = useCallback(
+    (id: string) => {
+      const trimmed = renameValue.trim();
+      window.api.sendToHost("tile-list:rename-tile", id, trimmed);
+      setRenamingId(null);
+      setRenameValue("");
+    },
+    [renameValue],
+  );
+
+  const cancelRename = useCallback(() => {
+    setRenamingId(null);
+    setRenameValue("");
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (renamingId) return;
       if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
       if (entries.length === 0) return;
       e.preventDefault();
@@ -134,7 +210,7 @@ function App() {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [entries, focusedId, handleClick]);
+  }, [entries, focusedId, handleClick, renamingId]);
 
   return (
     <div className="tile-list">
@@ -143,8 +219,14 @@ function App() {
           key={entry.id}
           entry={entry}
           focused={entry.id === focusedId}
+          isRenaming={entry.id === renamingId}
+          renameValue={entry.id === renamingId ? renameValue : ""}
           onClick={() => handleClick(entry.id)}
           onDoubleClick={() => handleDoubleClick(entry.id)}
+          onContextMenu={(e) => handleContextMenu(entry.id, e)}
+          onRenameChange={setRenameValue}
+          onRenameConfirm={() => commitRename(entry.id)}
+          onRenameCancel={cancelRename}
         />
       ))}
       {entries.length === 0 && (

@@ -83,6 +83,7 @@ async function init() {
 		prefNavWidth, prefSidebarMode,
 		prefAgentWidth, prefAgentMode,
 		prefAgentPty,
+		prefLastTerminalCwd,
 	] = await Promise.all([
 		window.shellApi.getViewConfig(),
 		window.shellApi.workspaceList(),
@@ -91,7 +92,19 @@ async function init() {
 		window.shellApi.getPref("panel-width-agent"),
 		window.shellApi.getPref("sidebar-mode-agent"),
 		window.shellApi.getPref("agent-pty-session"),
+		window.shellApi.getPref("lastTerminalCwd"),
 	]);
+
+	let lastTerminalCwd = prefLastTerminalCwd || null;
+
+	function getTerminalCwd() {
+		return lastTerminalCwd || workspaceData.workspaces[0];
+	}
+
+	function setLastTerminalCwd(cwd) {
+		lastTerminalCwd = cwd;
+		window.shellApi.setPref("lastTerminalCwd", cwd);
+	}
 
 	// DOM elements
 	const panelNav = document.getElementById("panel-nav");
@@ -358,16 +371,16 @@ async function init() {
 		};
 	}
 
-	// -- Single nav webview --
+	// -- File tree webview --
 
-	const navContainer = document.createElement("div");
-	navContainer.id = "nav-container";
-	navContainer.style.display = "flex";
-	navContainer.style.flex = "1";
-	navContainer.style.minHeight = "0";
-	panelNav.appendChild(navContainer);
+	const fileTreeContainer = document.createElement("div");
+	fileTreeContainer.id = "file-tree-container";
+	fileTreeContainer.style.display = "flex";
+	fileTreeContainer.style.flex = "1";
+	fileTreeContainer.style.minHeight = "0";
+	panelNav.appendChild(fileTreeContainer);
 	const navWebview = createWebview(
-		"nav", configs.nav, navContainer, handleDndMessage,
+		"nav", configs.nav, fileTreeContainer, handleDndMessage,
 	);
 	navWebview.webview.addEventListener("focus", () => {
 		noteSurfaceFocus("nav");
@@ -386,7 +399,7 @@ async function init() {
 	);
 
 	function updateSidebarContent(mode) {
-		navContainer.style.display =
+		fileTreeContainer.style.display =
 			mode === "files" ? "flex" : "none";
 		tileListContainer.style.display =
 			mode === "tiles" ? "flex" : "none";
@@ -501,6 +514,9 @@ async function init() {
 			syncTerminalTileMeta(tile, session?.meta);
 			tileManager.saveCanvasDebounced();
 			syncTileList();
+		},
+		onTerminalCwdChanged(cwd) {
+			setLastTerminalCwd(cwd);
 		},
 		onTerminalTileClosed() {
 			syncTileList();
@@ -727,7 +743,7 @@ async function init() {
 		const cx = (screenX - viewportState.panX) / viewportState.zoom;
 		const cy = (screenY - viewportState.panY) / viewportState.zoom;
 
-		const cwd = workspaceData.workspaces[0];
+		const cwd = getTerminalCwd();
 		const tile = tileManager.createCanvasTile(
 			"term", cx, cy, { cwd },
 		);
@@ -757,7 +773,7 @@ async function init() {
 		]);
 
 		if (selected === "new-terminal") {
-			const cwd = workspaceData.workspaces[0];
+			const cwd = getTerminalCwd();
 			const tile = tileManager.createCanvasTile(
 				"term", cx, cy, { cwd },
 			);
@@ -975,7 +991,7 @@ async function init() {
 			const cy =
 				(rect.height / 2 - viewportState.panY) /
 				viewportState.zoom - size.height / 2;
-			const cwd = workspaceData.workspaces[0];
+			const cwd = getTerminalCwd();
 			const tile = tileManager.createCanvasTile(
 				"term", cx, cy, { cwd },
 			);
@@ -1076,6 +1092,7 @@ async function init() {
 			} else if (target === "canvas") {
 				if (channel === "open-terminal") {
 					const cwd = args[0];
+					setLastTerminalCwd(cwd);
 					const size = defaultSize("term");
 					const rect = canvasEl.getBoundingClientRect();
 					const cx =
@@ -1212,6 +1229,10 @@ async function init() {
 					);
 					tileManager.focusCanvasTile(tileId);
 				}
+			} else if (event.channel === "tile-list:rename-tile") {
+				const tileId = event.args[0];
+				const newTitle = event.args[1];
+				tileManager.renameTile(tileId, newTitle);
 			}
 		},
 	);

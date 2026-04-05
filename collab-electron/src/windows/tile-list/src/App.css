@@ -74,4 +74,19 @@ body {
   flex: 1;
 }
 
+.tile-rename-input {
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg, #141414);
+  color: inherit;
+  border: 1px solid var(--accent, #5c9bcf);
+  border-radius: 2px;
+  padding: 0 4px;
+  outline: none;
+  min-width: 0;
+  flex: 1;
+  height: 1.4em;
+}
+
 .tile-empty { padding: 12px var(--nav-inset); color: var(--muted, #666); font-size: 11px; }

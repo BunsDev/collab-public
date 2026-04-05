@@ -1,6 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap');
 
 :root {
+	--font-sans: 'Geist', system-ui, sans-serif;
 	--font-mono: 'Geist Mono';
 	--bg: rgb(248, 248, 248);
 	--bg-rgb: 248, 248, 248;
@@ -50,7 +51,7 @@ body {
 	overflow: hidden;
 	background: transparent;
 	color: var(--fg);
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	-webkit-font-smoothing: antialiased;
 }
 
@@ -144,13 +145,13 @@ body.platform-win {
 }
 
 
-#nav-container {
+#file-tree-container {
 	display: flex;
 	flex: 1;
 	min-height: 0;
 }
 
-#nav-container webview {
+#file-tree-container webview {
 	flex: 1;
 }
 
@@ -254,7 +255,6 @@ body.platform-win {
 	border-bottom: 2px solid transparent;
 	margin-bottom: -1px;
 	background: transparent;
-	font-family: var(--font-mono);
 	font-size: 0.8rem;
 	font-weight: 400;
 	color: var(--muted);
@@ -795,7 +795,7 @@ body.platform-win {
 }
 
 .tile-title-text {
-	font-size: 11px;
+	font-size: 12px;
 	line-height: 1;
 	font-weight: 500;
 	color: var(--fg);
@@ -865,7 +865,16 @@ body.platform-win {
 }
 
 .canvas-tile[data-tile-type="term"] {
-	background: rgba(255, 255, 255, 0.15);
+	background: transparent;
+}
+
+.canvas-tile[data-tile-type="term"] .tile-blur-backdrop {
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	backdrop-filter: blur(12px);
+	background: rgba(240, 240, 240, 0.5);
+	pointer-events: none;
 }
 
 .canvas-tile[data-tile-type="term"] .tile-title-bar {
@@ -874,7 +883,11 @@ body.platform-win {
 }
 
 .dark .canvas-tile[data-tile-type="term"] {
-	background: rgba(0, 0, 0, 0.15);
+	background: transparent;
+}
+
+.dark .canvas-tile[data-tile-type="term"] .tile-blur-backdrop {
+	background: rgba(18, 18, 18, 0.5);
 }
 
 .dark .canvas-tile[data-tile-type="term"] .tile-title-bar {

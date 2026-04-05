@@ -29,7 +29,7 @@ import { getFileIcon } from './fileIcons';
 import { useImageThumbnail } from './useImageThumbnail';
 
 const ICON_SIZE = 14;
-export const ENABLE_GRAPH_TILES = true;
+export const ENABLE_GRAPH_TILES = false;
 
 function flattenAllFiles(
 	nodes: TreeNode[],

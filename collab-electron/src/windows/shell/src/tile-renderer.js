@@ -201,6 +201,12 @@ export function createTileDOM(tile, callbacks) {
 
   if (urlInput) titleBar.insertBefore(urlInput, btnGroup);
 
+  if (tile.type === "term") {
+    const blurBackdrop = document.createElement("div");
+    blurBackdrop.className = "tile-blur-backdrop";
+    container.appendChild(blurBackdrop);
+  }
+
   container.appendChild(titleBar);
   container.appendChild(contentArea);
   contentArea.appendChild(contentOverlay);

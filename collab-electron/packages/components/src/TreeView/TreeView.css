@@ -25,7 +25,6 @@
 	width: 100%;
 	margin-bottom: 0;
 	padding: 6px 8px;
-	font-family: var(--font-mono);
 	font-size: 0.8rem;
 	font-weight: 400;
 	border: 1px solid var(--border);
@@ -103,13 +102,13 @@
 .row-action-buttons {
 	display: flex;
 	align-items: center;
-	gap: 8px;
+	gap: 0;
 	height: 100%;
 	margin-right: 6px;
 }
 
 .row-timestamp {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.75rem;
 	font-weight: 400;
 	color: var(--muted-foreground);
@@ -236,7 +235,7 @@
 	display: flex;
 	align-items: center;
 	gap: 4px;
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.75rem;
 	font-weight: 500;
 	color: var(--muted-foreground);
@@ -300,7 +299,7 @@
 }
 
 .collection-tree-name {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.8rem;
 	font-weight: 500;
 	letter-spacing: 0.02em;
@@ -311,7 +310,7 @@
 }
 
 .collection-tree-count {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.65rem;
 	font-weight: 400;
 	letter-spacing: 0.03rem;
@@ -331,9 +330,9 @@
 	border: none;
 	color: var(--muted-foreground);
 	cursor: pointer;
-	padding: 2px;
+	padding: 0;
 	border-radius: 3px;
-	margin-right: 2px;
+	margin-right: 0;
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.15s, color 0.15s;
@@ -389,7 +388,7 @@
 	text-overflow: ellipsis;
 	min-width: 0;
 	flex: 1;
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-weight: 400;
 }
 
@@ -466,8 +465,8 @@
 }
 
 .workspace-parent {
-	font-family: var(--font-mono);
-	font-size: 0.75rem;
+	font-family: var(--font-sans);
+	font-size: 0.85rem;
 	font-weight: 400;
 	color: var(--muted-foreground);
 	opacity: 0.8;
@@ -478,8 +477,8 @@
 }
 
 .workspace-name {
-	font-family: var(--font-mono);
-	font-size: 0.8rem;
+	font-family: var(--font-sans);
+	font-size: 0.85rem;
 	font-weight: 500;
 	color: var(--foreground);
 	white-space: nowrap;
@@ -496,7 +495,7 @@
 }
 
 .search-result-parent {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.75rem;
 	font-weight: 400;
 	color: var(--muted-foreground);
@@ -508,7 +507,7 @@
 }
 
 .search-result-name {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.8rem;
 	font-weight: 400;
 	color: var(--foreground);
@@ -522,7 +521,7 @@
 }
 
 .search-no-matches {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.75rem;
 	color: var(--muted-foreground);
 	opacity: 0.5;
@@ -531,7 +530,7 @@
 
 /* Inline rename input */
 .inline-rename-input {
-	font-family: var(--font-mono);
+	font-family: var(--font-sans);
 	font-size: 0.8rem;
 	font-weight: 400;
 	background: var(--background);
