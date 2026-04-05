@@ -1,7 +1,5 @@
 :root {
   --nav-inset: 12px;
-  --running-color: #34d399;
-  --exited-color: #888;
   --focus-bg: rgba(255, 255, 255, 0.06);
 }
 
@@ -65,19 +63,6 @@ body {
 }
 
 .tile-icon svg { display: block; }
-
-.status-badge {
-  position: absolute;
-  bottom: -1px;
-  right: -2px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  border: 1px solid var(--bg, #141414);
-}
-
-.badge-running { background: var(--running-color); }
-.badge-exited { background: var(--exited-color); }
 
 .tile-title {
   font-weight: 500;

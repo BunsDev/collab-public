@@ -40,12 +40,6 @@ const TYPE_ICONS: Record<TileType, { icon: Icon; color: string }> = {
   image: { icon: Image, color: "#c07a6e" },
 };
 
-function StatusBadge({ status }: { status: TileEntry["status"] }) {
-  if (!status || status === "idle") return null;
-  const cls = status === "running" ? "badge-running" : "badge-exited";
-  return <div className={`status-badge ${cls}`} />;
-}
-
 function TileEntryRow({
   entry,
   focused,
@@ -70,7 +64,6 @@ function TileEntryRow({
           const color = def?.color ?? "#7a8aab";
           return <IconComp size={14} weight="regular" style={{ color }} />;
         })()}
-        <StatusBadge status={entry.status} />
       </div>
       <div className="tile-title">{entry.title}</div>
     </div>
