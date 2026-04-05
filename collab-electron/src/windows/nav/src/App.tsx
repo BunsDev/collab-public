@@ -1240,9 +1240,7 @@ export default function App() {
 					</div>
 				)}
 
-				{!loading &&
-					!error &&
-					workspacePaths.length > 0 && (
+				{!loading && !error && (
 						<div className="table-container items-table">
 							<SearchSortControls
 								ref={
@@ -1400,19 +1398,6 @@ export default function App() {
 									)}
 								</div>
 							</div>
-						</div>
-					)}
-
-				{!loading &&
-					!error &&
-					workspacePaths.length === 0 && (
-						<div className="empty-state">
-							<p>
-								No workspace added.
-								Use the + button
-								above to add a
-								folder.
-							</p>
 						</div>
 					)}
 			</div>
