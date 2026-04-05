@@ -875,6 +875,7 @@ body.platform-win {
 	backdrop-filter: blur(12px);
 	background: rgba(240, 240, 240, 0.5);
 	pointer-events: none;
+	will-change: backdrop-filter;
 }
 
 .canvas-tile[data-tile-type="term"] .tile-title-bar {
@@ -1076,7 +1077,6 @@ body.platform-win {
 }
 
 .canvas-tile.tile-dragging {
-	opacity: 0.85;
 }
 
 .canvas-tile.tile-dragging::before,
