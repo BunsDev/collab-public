@@ -953,10 +953,13 @@ async function init() {
 			panelManager.cycle();
 		} else if (action === "focus-file-search") {
 			panelManager.setMode("files");
+			focusSurface("nav");
 			requestAnimationFrame(() => {
-				workspaceManager.getNavWebview().send(
-					"focus-search",
-				);
+				requestAnimationFrame(() => {
+					workspaceManager.getNavWebview().send(
+						"focus-search",
+					);
+				});
 			});
 		} else if (action === "add-workspace") {
 			window.shellApi.workspaceAdd();
