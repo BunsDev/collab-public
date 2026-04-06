@@ -208,6 +208,7 @@ body.platform-win {
 
 #panel-agent webview {
 	flex: 1;
+	padding: 18px 4px 0 18px;
 }
 
 #grid-canvas {
