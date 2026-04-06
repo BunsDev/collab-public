@@ -240,7 +240,7 @@ export const WorkspaceTree = forwardRef<
 	);
 
 	return (
-		<div className="workspace-group">
+		<div className={`workspace-group${isExpanded ? '' : ' collapsed'}`}>
 			<FolderRow
 				item={workspaceItem}
 				onToggle={(path, recursive) =>
