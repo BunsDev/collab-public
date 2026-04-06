@@ -95,6 +95,9 @@
 					"to": "lib"
 				}
 			],
+			"extendInfo": {
+				"NSMicrophoneUsageDescription": "Collaborator needs microphone access to enable voice input for CLI tools like Claude Code."
+			},
 			"target": [
 				{
 					"target": "zip",
