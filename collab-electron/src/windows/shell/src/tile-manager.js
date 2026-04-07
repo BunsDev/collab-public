@@ -550,7 +550,16 @@ export function createTileManager({
 		const dom = tileDOMs.get(tile.id);
 		if (!dom) return tile;
 
-		if (type === "image") {
+		if (type === "pdf") {
+			const wv = document.createElement("webview");
+			wv.setAttribute("src", toCollabFileUrl(filePath));
+			wv.setAttribute("webpreferences", "contextIsolation=yes, sandbox=yes");
+			wv.style.width = "100%";
+			wv.style.height = "100%";
+			wv.style.border = "none";
+			dom.contentArea.appendChild(wv);
+			dom.webview = wv;
+		} else if (type === "image") {
 			const img = document.createElement("img");
 			img.src = toCollabFileUrl(filePath);
 			img.style.width = "100%";

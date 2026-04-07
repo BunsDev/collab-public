@@ -16,6 +16,8 @@ import "@collab/components/Editor/WikiLink.css";
 import { CodeEditorView } from "@collab/components/CodeEditorView";
 import "@collab/components/CodeEditorView/CodeEditorView.css";
 import { isImageFile } from "@collab/shared/image";
+import { isPdfFile } from "@collab/shared/pdf";
+import { toCollabFileUrl } from "@collab/shared/collab-file-url";
 import { extractCoverImageUrl } from "@collab/shared/extract-cover-image";
 import { ImageView } from "@collab/components/ImageView/ImageView";
 import "./styles/App.css";
@@ -213,7 +215,7 @@ export default function App() {
 
 	// Re-read file content when it changes on disk
 	useEffect(() => {
-		if (!selectedPath || isImageFile(selectedPath)) return;
+		if (!selectedPath || isImageFile(selectedPath) || isPdfFile(selectedPath)) return;
 
 		return window.api.onFsChanged((events) => {
 			const currentPath = selectedPathRef.current;
@@ -246,7 +248,7 @@ export default function App() {
 	useEffect(() => {
 		const onFocus = () => {
 			const currentPath = selectedPathRef.current;
-			if (!currentPath || isImageFile(currentPath)) return;
+			if (!currentPath || isImageFile(currentPath) || isPdfFile(currentPath)) return;
 
 			window.api.getFileStats(currentPath).then((stats) => {
 				if (fileMtimeRef.current && stats.mtime !== fileMtimeRef.current) {
@@ -299,7 +301,7 @@ export default function App() {
 			setFileError(null);
 		}
 
-		if (isImageFile(path)) {
+		if (isImageFile(path) || isPdfFile(path)) {
 			setFileContent("");
 			setLoadedPath(path);
 			setFileError(null);
@@ -500,6 +502,9 @@ export default function App() {
 	const displayedIsImage = displayedPath
 		? isImageFile(displayedPath)
 		: false;
+	const displayedIsPdf = displayedPath
+		? isPdfFile(displayedPath)
+		: false;
 	const showFileLoading =
 		!!selectedPath &&
 		!displayedPath &&
@@ -513,13 +518,18 @@ export default function App() {
 		!!displayedPath &&
 		!fileError &&
 		displayedIsImage;
+	const hasPdfFile =
+		!!displayedPath &&
+		!fileError &&
+		displayedIsPdf;
 	const hasCodeFile =
 		!!displayedPath &&
 		!fileError &&
 		!displayedIsMarkdown &&
-		!displayedIsImage;
+		!displayedIsImage &&
+		!displayedIsPdf;
 	const hasFile =
-		hasMarkdownFile || hasCodeFile || hasImageFile || showFileLoading;
+		hasMarkdownFile || hasCodeFile || hasImageFile || hasPdfFile || showFileLoading;
 	const hasFolder = !!focusedFolder && !selectedPath;
 	const headerPath = showFileLoading
 		? selectedPath
@@ -607,6 +617,13 @@ export default function App() {
 							className={isTileMode ? "canvas-tile-embed" : undefined}
 						/>
 					</>
+				)}
+				{hasPdfFile && displayedPath && (
+					<iframe
+						src={toCollabFileUrl(displayedPath)}
+						style={{ width: "100%", height: "100%", border: "none" }}
+						title={displayedPath}
+					/>
 				)}
 			</main>
 		</div>
