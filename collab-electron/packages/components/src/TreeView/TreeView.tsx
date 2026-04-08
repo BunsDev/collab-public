@@ -190,7 +190,7 @@ export const FolderRow = React.memo(function FolderRow({
 			)}
 			<button
 				className="folder-action-button"
-				title="Add to folder"
+				data-tooltip="Add to folder"
 				onClick={(e) => {
 					e.stopPropagation();
 					if (onPlusClick) {
@@ -204,7 +204,7 @@ export const FolderRow = React.memo(function FolderRow({
 			</button>
 			<button
 				className="folder-action-button"
-				title="Open in Terminal"
+				data-tooltip="Open in Terminal"
 				onClick={(e) => {
 					e.stopPropagation();
 					window.api.openInTerminal(
@@ -217,7 +217,7 @@ export const FolderRow = React.memo(function FolderRow({
 			{ENABLE_GRAPH_TILES && (
 				<button
 					className="folder-action-button"
-					title="Open graph view"
+					data-tooltip="Open graph view"
 					onClick={(e) => {
 						e.stopPropagation();
 						if (typeof window.api.createGraphTile === "function") {
