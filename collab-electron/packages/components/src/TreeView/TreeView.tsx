@@ -217,7 +217,7 @@ export const FolderRow = React.memo(function FolderRow({
 			{ENABLE_GRAPH_TILES && (
 				<button
 					className="folder-action-button"
-					title="Open graph view"
+					data-tooltip="Open graph view"
 					onClick={(e) => {
 						e.stopPropagation();
 						if (typeof window.api.createGraphTile === "function") {

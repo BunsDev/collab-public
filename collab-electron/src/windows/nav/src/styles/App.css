@@ -279,6 +279,28 @@ button {
 	transform: none;
 }
 
+/* ── Tooltips (matches shell tooltip style) ── */
+
+.nav-tooltip {
+	position: fixed;
+	z-index: 10000;
+	background: rgb(50, 50, 50);
+	border: 1px solid rgba(255, 255, 255, 0.12);
+	border-radius: 6px;
+	padding: 5px 10px;
+	font-size: 12px;
+	color: rgb(220, 220, 220);
+	white-space: nowrap;
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s ease-in-out;
+}
+
+.nav-tooltip.visible {
+	opacity: 1;
+}
+
 @media (prefers-color-scheme: dark) {
 	.create-item-modal-overlay {
 		background: rgba(10, 12, 16, 0.28);
