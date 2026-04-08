@@ -153,13 +153,13 @@ button {
 }
 
 .ws-add-kbd {
-	background: rgba(255, 255, 255, 0.08);
-	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: color-mix(in srgb, var(--foreground) 8%, transparent);
+	border: 1px solid color-mix(in srgb, var(--foreground) 6%, transparent);
 	border-radius: 3px;
 	padding: 1px 5px;
 	font-size: 0.7rem;
 	font-family: var(--font-mono);
-	color: rgba(220, 220, 220, 0.6);
+	color: color-mix(in srgb, var(--foreground) 40%, transparent);
 	margin-left: 4px;
 }
 
